@@ -12,6 +12,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2026-08-26
+
+### Added
+- **Find & Batch Replace Modal with RegEx (`FindReplaceModal.tsx`, `Ctrl + H`)**:
+  - Support PCRE-compatible regular expressions and capture group substitutions (`$1`, `$2`).
+  - Table-wide or column-restricted replacements with one-click atomic Undo rollback (`Ctrl + Z`).
+- **Rectangular TSV/CSV Clipboard Paste (`Ctrl + V`) (`VirtualTable.tsx`, `App.tsx`)**:
+  - Batch paste 2D matrix tabular data starting from the active cell with atomic Undo and floating toast notifications.
+- **Auto-Fit Column Width via Double-Click (`VirtualTable.tsx`)**:
+  - Double-click header borders to instantly calculate and resize columns to optimal text width.
+- **Selection Quick Statistics Preview (`StatusBar.tsx`, `VirtualTable.tsx`)**:
+  - Real-time status bar preview of Count, Numeric Count, Sum, Avg, Min, and Max for multi-cell selections.
+- **Recent Files History & Quick Reload (`TitleBar.tsx`, `recentFiles.ts`)**:
+  - Retain last 10 opened files in localStorage with quick reload and history clearing from the TitleBar menu.
+
+### Changed
+- **Sequential Column Indexing for Headerless CSVs (`VirtualTable.tsx`, `grid.rs`, `io.rs`)**:
+  - Unified default column display to 1-indexed numbers (`1, 2, 3...`) instead of `NULL` when headers are absent.
+- **Documentation Output Consolidation (`typedoc.json`, `.gitignore`)**:
+  - Redirected TypeDoc build output to `target/doc/ts` and cleaned up obsolete `docs/api` artifacts.
+
+---
+
 ## [1.0.0] - 2026-08-26
 
 ### Added
