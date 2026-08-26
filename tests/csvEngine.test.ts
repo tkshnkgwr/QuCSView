@@ -73,3 +73,60 @@ describe('CSV Splitting Math', () => {
     expect(chunk3).toEqual({ start: 100, end: 105 });
   });
 });
+
+describe('Regex and Capture Group Replacements', () => {
+  it('should format telephone numbers with capture groups', () => {
+    const phone = '09012345678';
+    const regex = /(\d{3})(\d{4})(\d{4})/;
+    const formatted = phone.replace(regex, '$1-$2-$3');
+    expect(formatted).toBe('090-1234-5678');
+  });
+
+  it('should replace strings case-insensitively', () => {
+    const text = 'Tokyo_TOKYO_tokyo';
+    const regex = new RegExp('tokyo', 'gi');
+    const replaced = text.replace(regex, 'Osaka');
+    expect(replaced).toBe('Osaka_Osaka_Osaka');
+  });
+});
+
+describe('Clipboard Rectangular TSV/CSV Parsing', () => {
+  it('should parse multi-line TSV data into a 2D matrix', () => {
+    const rawClipboard = 'A1\tB1\tC1\r\nA2\tB2\tC2\r\nA3\tB3\tC3\r\n';
+    const lines = rawClipboard.replace(/\r\n/g, '\n').split('\n');
+    if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
+
+    const matrix = lines.map((l) => l.split('\t'));
+    expect(matrix.length).toBe(3);
+    expect(matrix[0]).toEqual(['A1', 'B1', 'C1']);
+    expect(matrix[1]).toEqual(['A2', 'B2', 'C2']);
+    expect(matrix[2]).toEqual(['A3', 'B3', 'C3']);
+  });
+});
+
+describe('Selection Statistics Calculator', () => {
+  it('should accurately calculate sum, avg, min, max, and count from cell values', () => {
+    const cells = ['100', '250.5', 'invalid', '0', '-50', ''];
+    let sum = 0;
+    let count = 0;
+    let min: number | null = null;
+    let max: number | null = null;
+
+    cells.forEach((val) => {
+      const clean = val.replace(/,/g, '').trim();
+      if (clean !== '' && !isNaN(Number(clean))) {
+        const num = Number(clean);
+        count++;
+        sum += num;
+        if (min === null || num < min) min = num;
+        if (max === null || num > max) max = num;
+      }
+    });
+
+    expect(count).toBe(4);
+    expect(sum).toBe(300.5);
+    expect(sum / count).toBe(75.125);
+    expect(min).toBe(-50);
+    expect(max).toBe(250.5);
+  });
+});

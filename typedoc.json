@@ -6,7 +6,7 @@
     "src/types/csv.ts",
     "src/utils/csvParser.ts"
   ],
-  "out": "docs/api",
+  "out": "target/doc/ts",
   "name": "QuCSView API Documentation",
   "readme": "README.md",
   "includeVersion": true,

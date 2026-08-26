@@ -1,8 +1,6 @@
-// UPDATE 2026-08-26: [未保存編集箇所インジケータの実装]
-// なぜ: 現在の編集セル数（未保存のセル数）をステータスバー上に視覚化し、保存するまで注意を喚起するため。
 import React, { useState, useEffect } from 'react';
-import { FileMetadata, CellCoordinate } from '../types/csv';
-import { Cpu, Database, CheckCircle2, Filter, Edit3 } from 'lucide-react';
+import { FileMetadata, CellCoordinate, SelectionStats } from '../types/csv';
+import { Cpu, Database, CheckCircle2, Filter, Edit3, Calculator } from 'lucide-react';
 
 interface StatusBarProps {
   metadata: FileMetadata | null;
@@ -11,6 +9,7 @@ interface StatusBarProps {
   isFilterActive?: boolean;
   filteredCount?: number;
   modifiedCount?: number;
+  selectionStats?: SelectionStats | null;
 }
 
 export const StatusBar: React.FC<StatusBarProps> = ({
@@ -20,6 +19,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   isFilterActive = false,
   filteredCount = 0,
   modifiedCount = 0,
+  selectionStats = null,
 }) => {
   const [tick, setTick] = useState(0);
 
@@ -38,8 +38,8 @@ export const StatusBar: React.FC<StatusBarProps> = ({
       : '';
 
   return (
-// UPDATE 2026-08-26: [ライト/ダーク両対応ステータスバー]
-// なぜ: 無効な light: 構文を除去し、ライトモード（デフォルト）と dark: バリアントによるスタイリングを完全適用するため
+// UPDATE 2026-08-26: [ライト/ダーク両対応ステータスバー & 選択範囲簡易統計表示]
+// なぜ: 複数セル選択時に合計・平均・件数・最大・最小をリアルタイム表示するため
     <footer
       id="qu-statusbar"
       className="h-7 bg-[#F3F4F6] dark:bg-[#1A1D23] border-t border-gray-300 dark:border-[#2D3139] text-gray-600 dark:text-gray-400 px-3 flex items-center justify-between text-[11px] font-mono select-none shrink-0"
@@ -64,8 +64,31 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         )}
       </div>
 
-      {/* 右側: 未保存マーク・フィルタ情報・パフォーマンスとシステムメトリクス */}
+      {/* 右側: 選択範囲統計・未保存マーク・フィルタ情報・パフォーマンスとシステムメトリクス */}
       <div className="flex items-center gap-3">
+        {/* 選択範囲の簡易統計バッジ */}
+        {selectionStats && selectionStats.selectedCount > 1 && (
+          <div
+            id="badge-selection-stats"
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 border border-blue-300 dark:border-blue-700/50 text-blue-800 dark:text-blue-300 text-[10px] font-bold tabular-nums shadow-2xs"
+            title="選択セル範囲のリアルタイム簡易統計"
+          >
+            <Calculator className="w-3 h-3 text-blue-600 dark:text-blue-400 shrink-0" />
+            <span>選択: {selectionStats.selectedCount.toLocaleString()} セル</span>
+            {selectionStats.numericCount > 0 && (
+              <>
+                <span className="text-blue-300 dark:text-blue-700">|</span>
+                <span>合計: {selectionStats.sum !== null ? selectionStats.sum.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</span>
+                <span className="text-blue-300 dark:text-blue-700">|</span>
+                <span>平均: {selectionStats.avg !== null ? selectionStats.avg.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}</span>
+                <span className="text-blue-300 dark:text-blue-700">|</span>
+                <span>最小: {selectionStats.min !== null ? selectionStats.min.toLocaleString() : '-'}</span>
+                <span className="text-blue-300 dark:text-blue-700">|</span>
+                <span>最大: {selectionStats.max !== null ? selectionStats.max.toLocaleString() : '-'}</span>
+              </>
+            )}
+          </div>
+        )}
         {/* 未保存編集箇所バッジ */}
         {modifiedCount > 0 && (
           <div

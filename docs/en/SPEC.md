@@ -92,8 +92,27 @@ When opening tabular data in Microsoft Excel, multiple destructive auto-conversi
 ### 4.6 High-Speed File Splitting (Split CSV)
 - Dedicated `SplitModal` to split large datasets by specified line count chunks while automatically maintaining header rows.
 
-### 4.7 Synchronous View Mode Switch (Table ⇔ Raw Text)
-- Toggle seamlessly between the high-performance virtual grid (`VirtualTable`) and raw text editor (`RawTextView`).
+### 4.7 Table Preview ⇔ Raw Text Instant Toggle
+- Seamless millisecond synchronization switch between virtual grid viewport and raw text editor.
+
+### 4.8 Find & Batch Replace Modal (`FindReplaceModal` / `Ctrl + H`)
+- **RegEx & Capture Replacements**: Support PCRE-compatible pattern substitutions (e.g. `(\d{3})(\d{4})` → `$1-$2`).
+- **Target Scope**: Table-wide or column-restricted batch replacements.
+- **Full Undo / Redo**: Batch replace operations are registered as a single transaction in the Undo history stack for one-click rollback (`Ctrl + Z`).
+
+### 4.9 Rectangular TSV/CSV Clipboard Paste (`Ctrl + V`)
+- **2D Matrix Batch Insertion**: Batch paste tabular data from external spreadsheets or text editors starting from the active cell anchor.
+- **Atomic Undo**: All inserted cells are recorded as a single batch transaction in the Undo history stack.
+
+### 4.10 Auto-Fit Column Width via Double-Click
+- **Smart Width Optimization**: Double-click on any column header boundary to automatically resize the column based on the longest text in the current slice and header.
+
+### 4.11 Real-Time Selection Quick Statistics Preview
+- **Instant Aggregations**: Selecting multiple cells automatically displays real-time statistics in the status bar:
+  - Count, Numeric Count, Sum, Avg, Min, Max.
+
+### 4.12 Recent Files History & Quick Reload
+- **History Tracking**: Retains the last 10 opened files with names, sizes, and timestamps, accessible via the TitleBar history dropdown.
 
 ---
 
@@ -101,16 +120,19 @@ When opening tabular data in Microsoft Excel, multiple destructive auto-conversi
 
 | Shortcut                              | Scope                | Action                                                |
 | :------------------------------------ | :------------------- | :---------------------------------------------------- |
-| **`Ctrl + Z`**                        | Table                | Undo previous edit or row/col operation               |
+| **`Ctrl + Z`**                        | Table                | Undo previous edit, paste, replace, or row/col op     |
 | **`Ctrl + Y` / `Ctrl + Shift + Z`**   | Table                | Redo undone action                                    |
 | **`Right-Click`**                     | Cell / Row / Header  | Open structural Context Menu                          |
 | **`Ctrl + O`**                        | Global               | Open file dialog                                      |
 | **`Ctrl + S`**                        | Global               | Quick save file with current encoding                 |
 | **`Ctrl + Shift + S`**                | Global               | Open Save As & Export Settings dialog                 |
 | **`Ctrl + C`**                        | Table                | Copy selected cell range / row as TSV                 |
+| **`Ctrl + V`**                        | Table                | Paste 2D clipboard TSV/CSV data (Undo-supported)      |
+| **`Double-Click Header Border`**      | Header Boundary      | Auto-fit column width to content (Auto-Fit)           |
 | **`Ctrl + A`**                        | Table                | Select all cells in the table                         |
 | **`Shift + Arrow / Click`**           | Table                | Expand cell range selection                           |
 | **`Ctrl + F`**                        | Global               | Focus full-text search input                          |
+| **`Ctrl + H`**                        | Global               | Open Find & Replace dialog with RegEx support         |
 | **`F1`**                              | Global               | Toggle Help & Shortcuts modal                         |
 | **`Enter` / `F2`**                    | Cell Selected        | Begin in-place cell editing                           |
 | **`Enter`**                           | Cell Editing         | Commit edit and move down                             |

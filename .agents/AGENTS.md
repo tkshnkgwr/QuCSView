@@ -48,4 +48,10 @@ QuCSView は、リソース制限のあるWindows環境でも500MB超のCSV/TSV�
   3. バージョン更新ファイルをコミットし、`vX.Y.Z` の Git タグを作成して `origin/main` およびタグラベルを Push。
   4. GitHub Actions Release ワークフローの発動を確認し、ボスへ報告。
 
+### 6. コミットメッセージ言語規約（Conventional Commits + 日本語）
+- ボスからコミットの指示を受けた際、コミットメッセージは以下の規約に従って記述すること：
+  1. **接頭辞（Prefix）**: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, `release:` などの Conventional Commits 形式（英語）とする。
+  2. **件名・本文・箇条書き詳細**: すべて **日本語** で記述し、変更内容や目的を分かりやすく簡潔に記録すること。
+
+
 

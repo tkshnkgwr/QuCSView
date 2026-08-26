@@ -255,9 +255,7 @@ impl CsvEngine {
             let hdr = all_rows.remove(0);
             (hdr, all_rows)
         } else {
-            let hdr: Vec<String> = (1..=max_cols.max(1))
-                .map(|i| format!("Col {}", i))
-                .collect();
+            let hdr: Vec<String> = (1..=max_cols.max(1)).map(|i| i.to_string()).collect();
             (hdr, all_rows)
         };
 

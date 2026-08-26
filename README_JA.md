@@ -59,11 +59,13 @@ graph TD
         Writer["安全ストリームライター<br/>(Shift_JIS / UTF-8 / CRLF / LF 完全制御)"]:::core
     end
 
-    UI_Table -->|get_slice(start, count)| IPC_Bridge
-    UI_Edit -->|edit_cell(row, col, raw_str)| IPC_Bridge
-    UI_Search -->|search_fulltext(query)| IPC_Bridge
-    IPC_Bridge <--> MMap
-    IPC_Bridge <--> DiffBuffer
+    UI_Table -->|"get_slice(start, count)"| IPC_Bridge
+    UI_Edit -->|"edit_cell(row, col, value)"| IPC_Bridge
+    UI_Search -->|"search(query, regex)"| IPC_Bridge
+    IPC_Bridge --> MMap
+    MMap --> IPC_Bridge
+    IPC_Bridge --> DiffBuffer
+    DiffBuffer --> IPC_Bridge
     DiffBuffer --> Writer
 ```
 
@@ -71,19 +73,25 @@ graph TD
 
 ## ⌨️ キーボードショートカット一覧
 
-| ショートカット | 機能概要 |
-| :--- | :--- |
-| **`Ctrl + O`** | CSV / TSV ファイルを開く |
-| **`Ctrl + S`** | 現在の文字コード・改行コードで上書き保存 |
-| **`Ctrl + Shift + S`** | 名前を付けて保存（別名エクスポート） |
-| **`Ctrl + F`** | 全文高速検索バーへフォーカス |
-| **`F1`** | ヘルプ＆ショートカット仕様モーダルの開閉 |
-| **`Enter` / `F2`** | 選択セルのインプレース直接編集を開始 |
-| **`Enter` (編集時)** | 編集を確定し下のセルへ移動 |
-| **`Tab` (編集時)** | 編集を確定し右のセルへ移動 (`Shift+Tab` で左) |
-| **`Esc` (編集時)** | 編集を破棄してキャンセル |
-| **`矢印キー`** | アクティブセルの上下左右移動 |
-| **`PageUp` / `PageDown`** | 1画面分の高速スクロールジャンプ |
+| ショートカット                        | 機能概要                                                             |
+| :------------------------------------ | :------------------------------------------------------------------- |
+| **`Ctrl + Z`**                        | 操作を元に戻す (Undo: セル編集・貼り付け・置換・行/列操作)           |
+| **`Ctrl + Y` / `Ctrl + Shift + Z`**   | 直前に取り消した操作をやり直す (Redo)                                |
+| **`Ctrl + O`**                        | CSV / TSV ファイルを開く                                             |
+| **`Ctrl + S`**                        | 現在の文字コード・改行コードで上書き保存                             |
+| **`Ctrl + Shift + S`**                | 名前を付けて保存（別名エクスポート）                                 |
+| **`Ctrl + C`**                        | 選択セル範囲 / 選択行をTSV形式でクリップボードにコピー               |
+| **`Ctrl + V`**                        | クリップボードの2次元TSV/CSVデータを矩形貼り付け (Undo対応)          |
+| **`列境界ダブルクリック`**            | 対象列を最長テキスト幅に自動調整 (Auto-Fit)                          |
+| **`Ctrl + F`**                        | 全文高速検索バーへフォーカス                                         |
+| **`Ctrl + H`**                        | 検索と置換ダイアログを開く（正規表現・キャプチャ置換対応）           |
+| **`F1`**                              | ヘルプ＆ショートカット仕様モーダルの開閉                             |
+| **`Enter` / `F2`**                    | 選択セルのインプレース直接編集を開始                                 |
+| **`Enter` (編集時)**                  | 編集を確定し下のセルへ移動                                           |
+| **`Tab` (編集時)**                    | 編集を確定し右のセルへ移動 (`Shift+Tab` で左へ移動)                   |
+| **`Esc` (編集時)**                    | 編集を破棄してキャンセル                                             |
+| **`矢印キー`**                        | アクティブセルの上下左右移動                                         |
+| **`PageUp` / `PageDown`**             | 1画面分の高速スクロールジャンプ                                      |
 
 ---
 

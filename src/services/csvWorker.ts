@@ -333,8 +333,8 @@ self.onmessage = (e: MessageEvent) => {
             state.headers = parsedFirstLine.map((h, i) => h.trim() || `Col ${i + 1}`);
             state.lines = state.rawLines.slice(1);
           } else {
-            // ヘッダーなし: ヘッダー表示はNULL、1行目をデータ行（1行目）として表示
-            state.headers = Array.from({ length: colCount }, () => 'NULL');
+            // ヘッダーなし: ヘッダー表示は連番数字（1, 2, 3...）、1行目をデータ行（1行目）として表示
+            state.headers = Array.from({ length: colCount }, (_, i) => String(i + 1));
             state.lines = [...state.rawLines];
           }
         }
@@ -1210,6 +1210,153 @@ self.onmessage = (e: MessageEvent) => {
             encoding: targetEncoding,
             lineEnding,
             delimiter: outDelimiter,
+          },
+        });
+        break;
+      }
+
+      case 'REPLACE_CELL': {
+        const { row, col, query, replacement, caseSensitive, useRegex } = payload;
+        if (!query || row < 0 || row >= state.lines.length) {
+          self.postMessage({ id, success: true, data: null });
+          break;
+        }
+
+        const currentLine = state.lines[row] || '';
+        const cells = parseLine(currentLine, state.delimiter);
+        if (col < 0 || col >= state.headers.length) {
+          self.postMessage({ id, success: true, data: null });
+          break;
+        }
+
+        const modKey = `${row},${col}`;
+        const currentVal = state.modifiedCells.has(modKey)
+          ? state.modifiedCells.get(modKey)!
+          : cells[col] || '';
+        let newVal = currentVal;
+
+        if (useRegex) {
+          try {
+            const re = new RegExp(query, caseSensitive ? 'g' : 'gi');
+            newVal = currentVal.replace(re, replacement);
+          } catch {
+            self.postMessage({ id, success: false, error: 'Invalid regular expression' });
+            break;
+          }
+        } else if (caseSensitive) {
+          newVal = currentVal.replaceAll(query, replacement);
+        } else {
+          const lowerVal = currentVal.toLowerCase();
+          const lowerQuery = query.toLowerCase();
+          let res = '';
+          let lastIdx = 0;
+          let matchPos = lowerVal.indexOf(lowerQuery, lastIdx);
+
+          while (matchPos !== -1) {
+            res += currentVal.slice(lastIdx, matchPos) + replacement;
+            lastIdx = matchPos + query.length;
+            matchPos = lowerVal.indexOf(lowerQuery, lastIdx);
+          }
+          res += currentVal.slice(lastIdx);
+          newVal = res;
+        }
+
+        if (newVal !== currentVal) {
+          state.modifiedCells.set(modKey, newVal);
+
+          self.postMessage({
+            id,
+            success: true,
+            data: {
+              row,
+              col,
+              prevValue: currentVal,
+              newValue: newVal,
+            },
+          });
+        } else {
+          self.postMessage({ id, success: true, data: null });
+        }
+        break;
+      }
+
+      case 'REPLACE_ALL': {
+        const { query, replacement, caseSensitive, useRegex, columnFilter } = payload;
+        const changes: Array<{ row: number; col: number; prevValue: string; newValue: string }> = [];
+
+        if (!query || state.lines.length === 0) {
+          self.postMessage({
+            id,
+            success: true,
+            data: { replacedCount: 0, changes: [] },
+          });
+          break;
+        }
+
+        let regex: RegExp | null = null;
+        if (useRegex) {
+          try {
+            regex = new RegExp(query, caseSensitive ? 'g' : 'gi');
+          } catch {
+            self.postMessage({ id, success: false, error: 'Invalid regular expression' });
+            break;
+          }
+        }
+
+        const lowerQuery = query.toLowerCase();
+
+        for (let rowIdx = 0; rowIdx < state.lines.length; rowIdx++) {
+          const currentLine = state.lines[rowIdx] || '';
+          const cells = parseLine(currentLine, state.delimiter);
+
+          const startCol = columnFilter !== null && columnFilter !== undefined ? columnFilter : 0;
+          const endCol = columnFilter !== null && columnFilter !== undefined ? columnFilter + 1 : state.headers.length;
+
+          for (let colIdx = startCol; colIdx < Math.min(endCol, state.headers.length); colIdx++) {
+            const modKey = `${rowIdx},${colIdx}`;
+            const currentVal = state.modifiedCells.has(modKey)
+              ? state.modifiedCells.get(modKey)!
+              : cells[colIdx] || '';
+            let newVal = currentVal;
+
+            if (regex) {
+              regex.lastIndex = 0;
+              newVal = currentVal.replace(regex, replacement);
+            } else if (caseSensitive) {
+              newVal = currentVal.replaceAll(query, replacement);
+            } else if (currentVal.toLowerCase().includes(lowerQuery)) {
+              const lowerVal = currentVal.toLowerCase();
+              let res = '';
+              let lastIdx = 0;
+              let matchPos = lowerVal.indexOf(lowerQuery, lastIdx);
+
+              while (matchPos !== -1) {
+                res += currentVal.slice(lastIdx, matchPos) + replacement;
+                lastIdx = matchPos + query.length;
+                matchPos = lowerVal.indexOf(lowerQuery, lastIdx);
+              }
+              res += currentVal.slice(lastIdx);
+              newVal = res;
+            }
+
+            if (newVal !== currentVal) {
+              state.modifiedCells.set(modKey, newVal);
+              changes.push({
+                row: rowIdx,
+                col: colIdx,
+                prevValue: currentVal,
+                newValue: newVal,
+              });
+            }
+          }
+        }
+
+        self.postMessage({
+          id,
+          success: true,
+          data: {
+            replacedCount: changes.length,
+            changes,
           },
         });
         break;

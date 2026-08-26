@@ -192,7 +192,41 @@ export type HistoryAction =
       targetCol: number;
       headerName: string;
       colValues: string[];
+    }
+  | {
+      type: 'BATCH_REPLACE';
+      description: string;
+      changes: Array<{
+        row: number;
+        col: number;
+        prevValue: string;
+        newValue: string;
+      }>;
     };
+
+/**
+ * 単一セルの置換結果
+ */
+export interface ReplaceResult {
+  /** 置換された行インデックス (0-indexed) */
+  row: number;
+  /** 置換された列インデックス (0-indexed) */
+  col: number;
+  /** 置換前の文字列値 */
+  prevValue: string;
+  /** 置換後の新しい文字列値 */
+  newValue: string;
+}
+
+/**
+ * 一括置換レスポンス
+ */
+export interface ReplaceAllResponse {
+  /** 置換された総セル件数 */
+  replacedCount: number;
+  /** 各セルの変更詳細リスト（Undo用） */
+  changes: ReplaceResult[];
+}
 
 /**
  * ファイル分割実行時のパラメータ
@@ -208,5 +242,39 @@ export interface SplitConfig {
   encoding?: SupportedEncoding;
   /** 出力改行コード */
   lineEnding?: SupportedLineEnding;
+}
+
+/**
+ * 選択範囲の簡易統計情報
+ */
+export interface SelectionStats {
+  /** 選択された総セル件数 */
+  selectedCount: number;
+  /** 数値として解釈できたセル件数 */
+  numericCount: number;
+  /** 数値セルの合計値 */
+  sum: number | null;
+  /** 数値セルの平均値 */
+  avg: number | null;
+  /** 数値セルの最小値 */
+  min: number | null;
+  /** 数値セルの最大値 */
+  max: number | null;
+}
+
+/**
+ * 最近開いたファイル履歴
+ */
+export interface RecentFile {
+  /** ファイルのフルパス（デスクトップ環境時） */
+  path?: string;
+  /** ファイル名 */
+  name: string;
+  /** ファイルサイズ (バイト) */
+  size: number;
+  /** 最終オープン日時 (UNIXタイムスタンプ ms) */
+  lastOpened: number;
+  /** エンコーディング */
+  encoding?: SupportedEncoding;
 }
 

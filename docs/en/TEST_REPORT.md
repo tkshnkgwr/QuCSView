@@ -31,7 +31,7 @@
 | **TC-12** | Rendering      | Search match highlight styling                             | Apply background highlight without intrusive bold mutation  | ✅ **PASS**         |
 | **TC-13** | UI Layout      | Toolbar cleanup (relocate encodings to save modal)         | Keep toolbar clean and decluttered                          | ✅ **PASS**         |
 | **TC-14** | UI Layout      | Fixed-width search input (`w-48`)                          | Stable width across window resizing                         | ✅ **PASS**         |
-| **TC-15** | Headers        | "First row is header" toggle validation                    | Toggle headers and show "NULL" columns when unchecked       | ✅ **PASS**         |
+| **TC-15** | Headers        | "First row is header" toggle validation                    | Toggle headers and show sequential numbers (1, 2...)        | ✅ **PASS**         |
 | **TC-16** | Headers        | Headerless CSV edit and export                             | In-place edit from row 1 and export raw data cleanly        | ✅ **PASS**         |
 | **TC-17** | Search UI      | Match count badge external placement                       | Keep search input size unchanged during typing              | ✅ **PASS**         |
 | **TC-18** | UI Layout      | Anti-corruption badge cleanup                              | Expand grid area                                            | ✅ **PASS**         |

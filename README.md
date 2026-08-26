@@ -56,11 +56,13 @@ graph TD
         Writer["Safe Direct Stream Writer<br/>(Shift_JIS / UTF-8 / CRLF / LF)"]:::core
     end
 
-    UI_Table -->|get_slice(start, count)| IPC_Bridge
-    UI_Edit -->|edit_cell(row, col, raw_str)| IPC_Bridge
-    UI_Search -->|search_fulltext(query)| IPC_Bridge
-    IPC_Bridge <--> MMap
-    IPC_Bridge <--> DiffBuffer
+    UI_Table -->|"get_slice(start, count)"| IPC_Bridge
+    UI_Edit -->|"edit_cell(row, col, value)"| IPC_Bridge
+    UI_Search -->|"search(query, regex)"| IPC_Bridge
+    IPC_Bridge --> MMap
+    MMap --> IPC_Bridge
+    IPC_Bridge --> DiffBuffer
+    DiffBuffer --> IPC_Bridge
     DiffBuffer --> Writer
 ```
 
@@ -68,19 +70,25 @@ graph TD
 
 ## ⌨️ Keyboard Shortcuts
 
-| Shortcut | Description |
-| :--- | :--- |
-| **`Ctrl + O`** | Open CSV / TSV file |
-| **`Ctrl + S`** | Direct overwrite save (with current encoding & line ending) |
-| **`Ctrl + Shift + S`** | Save As (Export under new name) |
-| **`Ctrl + F`** | Focus full-text search bar |
-| **`F1`** | Open Help & Shortcut Guide Modal |
-| **`Enter` / `F2`** | Start in-place cell editing |
-| **`Enter` (in edit)** | Commit cell and navigate down |
-| **`Tab` (in edit)** | Commit cell and navigate right (`Shift+Tab` for left) |
-| **`Esc` (in edit)** | Cancel editing and revert to original value |
-| **`Arrow Keys`** | Navigate active cell selection |
-| **`PageUp` / `PageDown`** | Fast viewport scroll jump |
+| Shortcut                            | Action                                                         |
+| :---------------------------------- | :------------------------------------------------------------- |
+| **`Ctrl + Z`**                      | Undo (Cell edit, paste, replace, row/col operations)           |
+| **`Ctrl + Y` / `Ctrl + Shift + Z`** | Redo previous undone action                                    |
+| **`Ctrl + O`**                      | Open CSV / TSV file                                            |
+| **`Ctrl + S`**                      | Direct overwrite save (with current encoding & line ending)    |
+| **`Ctrl + Shift + S`**              | Save As (Export under new name)                                |
+| **`Ctrl + C`**                      | Copy selected cell range as TSV to clipboard                   |
+| **`Ctrl + V`**                      | Paste 2D clipboard TSV/CSV data (Undo-supported)               |
+| **`Double-Click Header Border`**    | Auto-fit column width to content (Auto-Fit)                    |
+| **`Ctrl + F`**                      | Focus full-text search bar                                     |
+| **`Ctrl + H`**                      | Open Find & Replace dialog (with RegEx & Capture support)      |
+| **`F1`**                            | Open Help & Shortcut Guide Modal                               |
+| **`Enter` / `F2`**                  | Start in-place cell editing                                    |
+| **`Enter` (in edit)**               | Commit cell and navigate down                                  |
+| **`Tab` (in edit)**                 | Commit cell and navigate right (`Shift+Tab` for left)          |
+| **`Esc` (in edit)**                 | Cancel editing and revert to original value                    |
+| **`Arrow Keys`**                    | Navigate active cell selection                                 |
+| **`PageUp` / `PageDown`**           | Fast viewport scroll jump                                      |
 
 ---
 

@@ -11,6 +11,7 @@ import { StatusBar } from './components/StatusBar';
 import { HelpModal } from './components/HelpModal';
 import { SaveModal } from './components/SaveModal';
 import { SplitModal } from './components/SplitModal';
+import { FindReplaceModal } from './components/FindReplaceModal';
 import {
   FileMetadata,
   SupportedEncoding,
@@ -18,19 +19,24 @@ import {
   SupportedDelimiter,
   CellCoordinate,
   SearchState,
+  SearchMatch,
   SortConfig,
   ViewMode,
   HistoryAction,
+  RecentFile,
+  SelectionStats,
 } from './types/csv';
 import { TauriBridge } from './services/tauriBridge';
 import { generateBenchmarkCsv } from './utils/sampleData';
 import { useTheme } from './hooks/useTheme';
+import { getRecentFiles, addRecentFile, clearRecentFiles } from './utils/recentFiles';
 
 export default function App() {
   const { themeMode, setThemeMode, resolvedTheme } = useTheme();
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
+  const [isFindReplaceOpen, setIsFindReplaceOpen] = useState(false);
   const [metadata, setMetadata] = useState<FileMetadata | null>(null);
   const [hasHeader, setHasHeader] = useState<boolean>(true);
   const [activeCell, setActiveCell] = useState<CellCoordinate | null>({ row: 0, col: 0 });
@@ -38,6 +44,8 @@ export default function App() {
   const [alwaysOnTop, setAlwaysOnTop] = useState(false);
   const [jumpInput, setJumpInput] = useState('');
   const [jumpToRowTrigger, setJumpToRowTrigger] = useState<number | null>(null);
+  const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
+  const [selectionStats, setSelectionStats] = useState<SelectionStats | null>(null);
 
   // UPDATE 2026-08-26: 表示モード ('table' | 'text') & 未保存セル追跡 Set
   const [viewMode, setViewMode] = useState<ViewMode>('table');
@@ -77,8 +85,9 @@ export default function App() {
     return Array.from(rowSet).sort((a, b) => a - b);
   }, [searchState.matches]);
 
-  // アプリ起動直後に即座にテーブルを表示（10,000行ベンチマークデータ）
+  // アプリ起動直後に即座にテーブルを表示（10,000行ベンチマークデータ）および履歴読込
   useEffect(() => {
+    setRecentFiles(getRecentFiles());
     loadBenchmarkData(10000, false);
   }, []);
 
@@ -126,8 +135,86 @@ export default function App() {
         const text = await TauriBridge.getCurrentText(meta.lineEnding, meta.delimiter);
         setRawText(text);
       }
+
+      // 最近開いたファイル履歴に追加
+      const updated = addRecentFile({
+        name: file.name,
+        size: file.size,
+        encoding: meta.encoding,
+      });
+      setRecentFiles(updated);
     } catch (err) {
       console.error('Failed to open file:', err);
+    }
+  };
+
+  // 最近開いたファイルの再読込
+  const handleOpenRecentFile = async (recent: RecentFile) => {
+    try {
+      if (recent.path) {
+        const meta = await TauriBridge.openFilePath(recent.path);
+        setMetadata(meta);
+        setHasHeader(meta.hasHeader ?? true);
+        setActiveCell({ row: 0, col: 0 });
+        setModifiedCells(new Set());
+        setSearchState((prev) => ({
+          ...prev,
+          query: '',
+          matches: [],
+          currentIndex: 0,
+          regexError: null,
+          filterMode: false,
+        }));
+        setJumpToRowTrigger(0);
+
+        const updated = addRecentFile(recent);
+        setRecentFiles(updated);
+      }
+    } catch (err) {
+      console.error('Failed to reopen recent file:', err);
+    }
+  };
+
+  // 履歴クリア
+  const handleClearRecentFiles = () => {
+    clearRecentFiles();
+    setRecentFiles([]);
+  };
+
+  // クリップボードからの矩形貼り付け一括編集ハンドラ
+  const handleBatchCellEdited = async (
+    changes: Array<{ row: number; col: number; prevValue: string; newValue: string }>
+  ) => {
+    if (changes.length === 0) return;
+
+    try {
+      // 各セルをエンジンに反映
+      for (const ch of changes) {
+        await TauriBridge.editCell(ch.row, ch.col, ch.newValue);
+      }
+
+      setModifiedCells((prev) => {
+        const next = new Set(prev);
+        for (const ch of changes) {
+          next.add(`${ch.row},${ch.col}`);
+        }
+        return next;
+      });
+
+      setMetadata((prev) => (prev ? { ...prev, isDirty: true } : null));
+
+      // Undoスタックに一括登録
+      setUndoStack((prev) => [
+        ...prev,
+        {
+          type: 'BATCH_REPLACE',
+          description: `${changes.length} セルの貼り付け`,
+          changes,
+        },
+      ]);
+      setRedoStack([]);
+    } catch (err) {
+      console.error('Failed to apply batch pasted cells:', err);
     }
   };
 
@@ -539,6 +626,21 @@ export default function App() {
           setMetadata((prev) => (prev ? { ...prev, totalCols: res.totalCols ?? prev.totalCols - 1, headers: res.headers ?? prev.headers } : null));
           break;
         }
+        case 'BATCH_REPLACE': {
+          for (const c of action.changes) {
+            await TauriBridge.editCell(c.row, c.col, c.prevValue);
+          }
+          setModifiedCells((prev) => {
+            const next = new Set(prev);
+            action.changes.forEach((c) => next.add(`${c.row},${c.col}`));
+            return next;
+          });
+          if (action.changes.length > 0) {
+            setActiveCell({ row: action.changes[0].row, col: action.changes[0].col });
+            setJumpToRowTrigger(action.changes[0].row);
+          }
+          break;
+        }
       }
 
       setUndoStack(newUndoStack);
@@ -594,6 +696,21 @@ export default function App() {
         case 'DUPLICATE_COL': {
           const res = await TauriBridge.duplicateCol(action.sourceCol, action.targetCol, action.headerName);
           setMetadata((prev) => (prev ? { ...prev, totalCols: res.totalCols ?? prev.totalCols + 1, headers: res.headers ?? prev.headers } : null));
+          break;
+        }
+        case 'BATCH_REPLACE': {
+          for (const c of action.changes) {
+            await TauriBridge.editCell(c.row, c.col, c.newValue);
+          }
+          setModifiedCells((prev) => {
+            const next = new Set(prev);
+            action.changes.forEach((c) => next.add(`${c.row},${c.col}`));
+            return next;
+          });
+          if (action.changes.length > 0) {
+            setActiveCell({ row: action.changes[0].row, col: action.changes[0].col });
+            setJumpToRowTrigger(action.changes[0].row);
+          }
           break;
         }
       }
@@ -754,6 +871,9 @@ export default function App() {
           searchInput.focus();
           searchInput.select();
         }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'h') {
+        e.preventDefault();
+        setIsFindReplaceOpen(true);
       }
     };
 
@@ -768,6 +888,170 @@ export default function App() {
     };
   }, [metadata, viewMode]);
 
+  // モーダル内での検索ハンドラ
+  const handleFindNextInModal = async (
+    q: string,
+    caseSens: boolean,
+    regex: boolean,
+    colFilt: number | null
+  ): Promise<SearchMatch | null> => {
+    try {
+      const { matches, error } = await TauriBridge.search(q, caseSens, regex, colFilt);
+      setSearchState((prev) => ({
+        ...prev,
+        query: q,
+        caseSensitive: caseSens,
+        useRegex: regex,
+        regexError: error,
+        columnFilter: colFilt,
+        matches,
+      }));
+
+      if (matches.length > 0) {
+        // 現在のアクティブセル以降の最初の一致を探す
+        let nextIdx = 0;
+        if (activeCell) {
+          const found = matches.findIndex(
+            (m) => m.row > activeCell.row || (m.row === activeCell.row && m.col > activeCell.col)
+          );
+          nextIdx = found !== -1 ? found : 0;
+        }
+        const match = matches[nextIdx];
+        setSearchState((prev) => ({ ...prev, currentIndex: nextIdx }));
+        setActiveCell({ row: match.row, col: match.col });
+        setActiveCellValue(match.value);
+        setJumpToRowTrigger(match.row);
+        return match;
+      }
+      return null;
+    } catch (err) {
+      console.error('Find next failed:', err);
+      return null;
+    }
+  };
+
+  const handleFindPrevInModal = async (
+    q: string,
+    caseSens: boolean,
+    regex: boolean,
+    colFilt: number | null
+  ): Promise<SearchMatch | null> => {
+    try {
+      const { matches, error } = await TauriBridge.search(q, caseSens, regex, colFilt);
+      setSearchState((prev) => ({
+        ...prev,
+        query: q,
+        caseSensitive: caseSens,
+        useRegex: regex,
+        regexError: error,
+        columnFilter: colFilt,
+        matches,
+      }));
+
+      if (matches.length > 0) {
+        let prevIdx = matches.length - 1;
+        if (activeCell) {
+          const foundReverse = [...matches]
+            .reverse()
+            .findIndex((m) => m.row < activeCell.row || (m.row === activeCell.row && m.col < activeCell.col));
+          if (foundReverse !== -1) {
+            prevIdx = matches.length - 1 - foundReverse;
+          }
+        }
+        const match = matches[prevIdx];
+        setSearchState((prev) => ({ ...prev, currentIndex: prevIdx }));
+        setActiveCell({ row: match.row, col: match.col });
+        setActiveCellValue(match.value);
+        setJumpToRowTrigger(match.row);
+        return match;
+      }
+      return null;
+    } catch (err) {
+      console.error('Find prev failed:', err);
+      return null;
+    }
+  };
+
+  const handleReplaceCurrentInModal = async (
+    q: string,
+    rep: string,
+    caseSens: boolean,
+    regex: boolean,
+    colFilt: number | null
+  ): Promise<boolean> => {
+    if (!activeCell) return false;
+    try {
+      const res = await TauriBridge.replaceCell(
+        activeCell.row,
+        activeCell.col,
+        q,
+        rep,
+        caseSens,
+        regex
+      );
+      if (res) {
+        setModifiedCells((prev) => new Set(prev).add(`${res.row},${res.col}`));
+        setMetadata((prev) => (prev ? { ...prev, isDirty: true } : null));
+        setUndoStack((prev) => [
+          ...prev,
+          {
+            type: 'EDIT_CELL',
+            row: res.row,
+            col: res.col,
+            prevValue: res.prevValue,
+            newValue: res.newValue,
+          },
+        ]);
+        setRedoStack([]);
+        setActiveCellValue(res.newValue);
+        // 置換後、次のマッチへ自動移動
+        await handleFindNextInModal(q, caseSens, regex, colFilt);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Replace current failed:', err);
+      return false;
+    }
+  };
+
+  const handleReplaceAllInModal = async (
+    q: string,
+    rep: string,
+    caseSens: boolean,
+    regex: boolean,
+    colFilt: number | null
+  ): Promise<number> => {
+    try {
+      const res = await TauriBridge.replaceAll(q, rep, caseSens, regex, colFilt);
+      if (res && res.replacedCount > 0) {
+        setModifiedCells((prev) => {
+          const next = new Set(prev);
+          res.changes.forEach((c) => next.add(`${c.row},${c.col}`));
+          return next;
+        });
+        setMetadata((prev) => (prev ? { ...prev, isDirty: true } : null));
+        setUndoStack((prev) => [
+          ...prev,
+          {
+            type: 'BATCH_REPLACE',
+            description: `${res.replacedCount} 件の置換`,
+            changes: res.changes,
+          },
+        ]);
+        setRedoStack([]);
+
+        // 検索状態をリフレッシュ
+        await executeSearch(q, caseSens, regex, colFilt);
+        return res.replacedCount;
+      }
+      return 0;
+    } catch (err) {
+      console.error('Replace all failed:', err);
+      throw err;
+    }
+  };
+
   const currentMatch =
     searchState.matches.length > 0 ? searchState.matches[searchState.currentIndex] : null;
 
@@ -778,7 +1062,7 @@ export default function App() {
       id="qu-app-root"
       className="flex flex-col h-screen w-screen overflow-hidden bg-[#FAFAFA] dark:bg-[#0F1115] text-gray-800 dark:text-[#D1D5DB] font-mono select-none"
     >
-      {/* 1. タイトルバー (テーマ切替 & ヘルプボタン搭載) */}
+      {/* 1. タイトルバー (テーマ切替 & ヘルプボタン & 最近開いたファイル履歴) */}
       <TitleBar
         metadata={metadata}
         alwaysOnTop={alwaysOnTop}
@@ -787,9 +1071,12 @@ export default function App() {
         themeMode={themeMode}
         onThemeChange={setThemeMode}
         onOpenHelp={() => setIsHelpOpen(true)}
+        recentFiles={recentFiles}
+        onOpenRecentFile={handleOpenRecentFile}
+        onClearRecentFiles={handleClearRecentFiles}
       />
 
-      {/* 2. ツールバー（ファイル開く・保存、Undo/Redo、ファイル分割、表示切替[表/テキスト]、超高速固定幅検索、クリアボタン、正規表現トグル、行フィルタ、ヘッダ切替、文字コード切替） */}
+      {/* 2. ツールバー（ファイル開く・保存、Undo/Redo、置換、ファイル分割、表示切替[表/テキスト]、超高速固定幅検索、クリアボタン、正規表現トグル、行フィルタ、ヘッダ切替、文字コード切替） */}
       <Toolbar
         metadata={metadata}
         hasHeader={hasHeader}
@@ -816,6 +1103,7 @@ export default function App() {
         onUndo={handleUndo}
         onRedo={handleRedo}
         onOpenSplitModal={() => setIsSplitModalOpen(true)}
+        onOpenFindReplace={() => setIsFindReplaceOpen(true)}
       />
 
       {/* 3. メインビュー（CSV表プレビュー ⇔ テキスト表示 の切替） */}
@@ -841,6 +1129,8 @@ export default function App() {
             sortConfig={sortConfig}
             onSortColumn={handleSortColumn}
             onCellEdited={handleCellEdited}
+            onBatchCellEdited={handleBatchCellEdited}
+            onSelectionStatsChange={setSelectionStats}
             modifiedCells={modifiedCells}
             jumpToRowTrigger={jumpToRowTrigger}
             filterIndices={matchedRowIndices}
@@ -864,7 +1154,7 @@ export default function App() {
         </div>
       )}
 
-      {/* 4. ステータスバー (未保存編集箇所バッジ表示) */}
+      {/* 4. ステータスバー (未保存編集箇所 & 選択範囲簡易統計バッジ表示) */}
       <StatusBar
         metadata={metadata}
         activeCell={activeCell}
@@ -872,6 +1162,7 @@ export default function App() {
         isFilterActive={searchState.filterMode}
         filteredCount={matchedRowIndices.length}
         modifiedCount={modifiedCells.size}
+        selectionStats={selectionStats}
       />
 
       {/* 5. ヘルプ＆ショートカットモーダル (F1 / ? ボタン) */}
@@ -890,6 +1181,21 @@ export default function App() {
         isOpen={isSplitModalOpen}
         onClose={() => setIsSplitModalOpen(false)}
         metadata={metadata}
+      />
+
+      {/* 8. 検索・一括置換モーダル (Ctrl+H / ツールバー置換) */}
+      <FindReplaceModal
+        isOpen={isFindReplaceOpen}
+        onClose={() => setIsFindReplaceOpen(false)}
+        metadata={metadata}
+        initialQuery={searchState.query}
+        initialUseRegex={searchState.useRegex}
+        initialCaseSensitive={searchState.caseSensitive}
+        initialColumnFilter={searchState.columnFilter}
+        onFindNext={handleFindNextInModal}
+        onFindPrev={handleFindPrevInModal}
+        onReplaceCurrent={handleReplaceCurrentInModal}
+        onReplaceAll={handleReplaceAllInModal}
       />
     </div>
   );

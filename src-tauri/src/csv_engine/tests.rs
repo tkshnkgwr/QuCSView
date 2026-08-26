@@ -179,3 +179,36 @@ fn test_clear_modified_cells() {
     engine.clear_modified_cells();
     assert_eq!(engine.modified_cells.len(), 0);
 }
+
+#[test]
+fn test_regex_replace_with_capture_group() {
+    let csv_data = "ID,Phone\r\n1,09012345678\r\n2,08098765432\r\n";
+    let temp_file = create_test_csv(csv_data);
+
+    let mut engine = CsvEngine::new();
+    engine.open_file(temp_file.path(), None).unwrap();
+
+    // 090-1234-5678 形式への正規表現キャプチャ置換
+    let res = engine.replace_all(r"(\d{3})(\d{4})(\d{4})", "$1-$2-$3", true, true, Some(1));
+
+    assert_eq!(res.replaced_count, 2);
+    assert_eq!(engine.get_cell_value(0, 1), "090-1234-5678");
+    assert_eq!(engine.get_cell_value(1, 1), "080-9876-5432");
+}
+
+#[test]
+fn test_replace_cell_case_insensitive() {
+    let csv_data = "ID,Role\r\n1,Developer\r\n2,Manager\r\n";
+    let temp_file = create_test_csv(csv_data);
+
+    let mut engine = CsvEngine::new();
+    engine.open_file(temp_file.path(), None).unwrap();
+
+    let res = engine
+        .replace_cell(0, 1, "developer", "Lead Engineer", false, false)
+        .unwrap();
+
+    assert_eq!(res.prev_value, "Developer");
+    assert_eq!(res.new_value, "Lead Engineer");
+    assert_eq!(engine.get_cell_value(0, 1), "Lead Engineer");
+}

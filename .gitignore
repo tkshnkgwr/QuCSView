@@ -10,7 +10,6 @@ dist/
 .tauri/
 .vite/
 .eslintcache
-docs/typedoc/
 
 # ===== App User Data & Logs (Local Only) =====
 config.json

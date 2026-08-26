@@ -1,7 +1,7 @@
 // UPDATE 2026-08-20: [機能追加] テーマ切替プルダウン (ライト/ダーク/システム) および ヘルプモーダル起動ボタン (? / F1) の追加
-import React from 'react';
-import { Pin, PinOff, FileSpreadsheet, Sparkles, HelpCircle, Sun, Moon, Laptop } from 'lucide-react';
-import { FileMetadata, ThemeMode } from '../types/csv';
+import React, { useState, useRef, useEffect } from 'react';
+import { Pin, PinOff, FileSpreadsheet, Sparkles, HelpCircle, Sun, Moon, Laptop, History, ChevronDown, Trash2, Clock } from 'lucide-react';
+import { FileMetadata, ThemeMode, RecentFile } from '../types/csv';
 
 interface TitleBarProps {
   metadata: FileMetadata | null;
@@ -11,6 +11,9 @@ interface TitleBarProps {
   themeMode: ThemeMode;
   onThemeChange: (mode: ThemeMode) => void;
   onOpenHelp: () => void;
+  recentFiles?: RecentFile[];
+  onOpenRecentFile?: (file: RecentFile) => void;
+  onClearRecentFiles?: () => void;
 }
 
 export const TitleBar: React.FC<TitleBarProps> = ({
@@ -21,20 +24,106 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   themeMode,
   onThemeChange,
   onOpenHelp,
+  recentFiles = [],
+  onOpenRecentFile,
+  onClearRecentFiles,
 }) => {
+  const [isRecentMenuOpen, setIsRecentMenuOpen] = useState(false);
+  const recentMenuRef = useRef<HTMLDivElement>(null);
+
+  // 外側クリックでメニューを閉じる
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (recentMenuRef.current && !recentMenuRef.current.contains(e.target as Node)) {
+        setIsRecentMenuOpen(false);
+      }
+    };
+    if (isRecentMenuOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [isRecentMenuOpen]);
+
   return (
-// UPDATE 2026-08-26: [ライト/ダーク両対応タイトルバー]
-// なぜ: 無効な light: 構文を除去し、ライトモード（デフォルト）と dark: バリアントによる高視認性スタイルを完全適用するため
+// UPDATE 2026-08-26: [ライト/ダーク両対応タイトルバー & 最近開いたファイル履歴メニュー]
+// なぜ: 直近開いたファイルを1クリックで再読込可能にし、アプリの作業効率を向上させるため
     <header
       id="qu-titlebar"
       className="h-10 bg-[#F3F4F6] dark:bg-[#1A1D23] border-b border-gray-300 dark:border-[#2D3139] text-gray-800 dark:text-[#D1D5DB] flex items-center justify-between px-3 select-none text-xs font-mono tracking-tight shrink-0 shadow-xs"
     >
-      {/* 左側: アプリロゴとファイルパス/ステータス */}
+      {/* 左側: アプリロゴ、ファイルパス/ステータス、最近開いたファイルメニュー */}
       <div className="flex items-center gap-2.5 overflow-hidden">
         <div className="flex items-center gap-1.5 font-bold text-blue-600 dark:text-blue-400 bg-white dark:bg-[#0F1115] border border-gray-300 dark:border-[#374151] px-2 py-0.5 rounded text-[11px] tracking-wider uppercase shadow-2xs">
           <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
           <span>QuCSView</span>
         </div>
+
+        {/* 最近開いたファイル（Recent Files）ドロップダウン */}
+        {recentFiles.length > 0 && onOpenRecentFile && (
+          <div className="relative" ref={recentMenuRef}>
+            <button
+              id="btn-recent-files-menu"
+              type="button"
+              onClick={() => setIsRecentMenuOpen((prev) => !prev)}
+              className="flex items-center gap-1 px-2 py-0.5 rounded bg-white dark:bg-[#0F1115] border border-gray-300 dark:border-[#2D3139] hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300 text-[10px] font-semibold transition-colors cursor-pointer shadow-2xs"
+              title="最近開いたファイル履歴"
+            >
+              <History className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+              <span>履歴 ({recentFiles.length})</span>
+              <ChevronDown className="w-2.5 h-2.5 text-gray-400" />
+            </button>
+
+            {isRecentMenuOpen && (
+              <div
+                id="menu-recent-files-dropdown"
+                className="absolute left-0 top-full mt-1 w-72 bg-white dark:bg-[#16191E] border border-gray-300 dark:border-[#2D3139] rounded-lg shadow-xl py-1 z-50 animate-in fade-in duration-100 text-xs"
+              >
+                <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-200 dark:border-[#2D3139] text-gray-500 dark:text-gray-400 text-[10px] font-bold">
+                  <span>最近開いたファイル</span>
+                  {onClearRecentFiles && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClearRecentFiles();
+                        setIsRecentMenuOpen(false);
+                      }}
+                      className="flex items-center gap-1 text-red-500 hover:text-red-600 hover:underline cursor-pointer"
+                      title="履歴をすべて消去"
+                    >
+                      <Trash2 className="w-2.5 h-2.5" />
+                      <span>クリア</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="max-h-60 overflow-y-auto divide-y divide-gray-100 dark:divide-[#242A35]">
+                  {recentFiles.map((file, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        onOpenRecentFile(file);
+                        setIsRecentMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-[#20252E] flex flex-col gap-0.5 transition-colors cursor-pointer group"
+                    >
+                      <span className="font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 truncate text-[11px]">
+                        {file.name}
+                      </span>
+                      <div className="flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-500">
+                        <span>{(file.size / 1024).toFixed(1)} KB {file.encoding ? `• ${file.encoding}` : ''}</span>
+                        <span className="flex items-center gap-0.5">
+                          <Clock className="w-2.5 h-2.5" />
+                          {new Date(file.lastOpened).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 truncate max-w-md">
           {metadata ? (

@@ -15,6 +15,7 @@ import {
   Undo2,
   Redo2,
   Scissors,
+  Replace,
 } from 'lucide-react';
 import {
   FileMetadata,
@@ -53,6 +54,7 @@ interface ToolbarProps {
   onUndo?: () => void;
   onRedo?: () => void;
   onOpenSplitModal?: () => void;
+  onOpenFindReplace?: () => void;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -81,6 +83,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onUndo,
   onRedo,
   onOpenSplitModal,
+  onOpenFindReplace,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -174,6 +177,21 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </button>
         </div>
 
+        {/* 検索・置換ボタン */}
+        {onOpenFindReplace && (
+          <button
+            id="btn-open-find-replace"
+            type="button"
+            onClick={onOpenFindReplace}
+            disabled={!metadata}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded border bg-white dark:bg-[#242A35] hover:bg-gray-100 dark:hover:bg-[#2F3644] disabled:opacity-40 disabled:pointer-events-none text-gray-800 dark:text-gray-200 border-gray-300 dark:border-[#374151] transition-colors font-medium active:scale-95 cursor-pointer shadow-2xs"
+            title="検索と置換ダイアログを開く (Ctrl+H)"
+          >
+            <Replace className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            <span>置換</span>
+          </button>
+        )}
+
         {/* ファイル分割ボタン */}
         {onOpenSplitModal && (
           <button
@@ -255,7 +273,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <label
           id="label-has-header"
           className="flex items-center gap-1.5 px-2 py-1 rounded bg-white dark:bg-[#0F1115] border border-gray-300 dark:border-[#2D3139] text-gray-800 dark:text-gray-200 cursor-pointer select-none shadow-2xs hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
-          title="チェック時: 1行目を列名として使用 / 未チェック時: ヘッダー行をNULLとし1行目をデータ行として表示"
+          title="チェック時: 1行目を列名として使用 / 未チェック時: ヘッダー列を連番数字(1, 2...)とし1行目をデータ行として表示"
+          aria-label="一行目をヘッダとする"
         >
           <input
             id="checkbox-has-header"

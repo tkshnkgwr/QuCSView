@@ -10,6 +10,8 @@ import {
   VirtualSliceResponse,
   SearchMatch,
   SortConfig,
+  ReplaceResult,
+  ReplaceAllResponse,
 } from '../types/csv';
 
 let worker: Worker | null = null;
@@ -95,6 +97,27 @@ export class TauriBridge {
       },
       [buffer]
     );
+  }
+
+  /**
+   * ファイルパスからの直接オープン（デスクトップ環境・履歴再読込用）
+   */
+  static async openFilePath(
+    filePath: string,
+    customDelimiter?: SupportedDelimiter
+  ): Promise<FileMetadata> {
+    if (isTauriEnv()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        return await invoke<FileMetadata>('open_csv_file', {
+          path: filePath,
+          customDelimiter: customDelimiter || null,
+        });
+      } catch (err) {
+        console.warn('Tauri open_csv_file failed:', err);
+      }
+    }
+    throw new Error('File path opening is only supported in native desktop environment');
   }
 
   /**
@@ -303,6 +326,77 @@ export class TauriBridge {
       matches: res.matches || [],
       error: res.error || null,
     };
+  }
+
+  /**
+   * 単一セルの文字列置換
+   */
+  static async replaceCell(
+    row: number,
+    col: number,
+    query: string,
+    replacement: string,
+    caseSensitive: boolean = false,
+    useRegex: boolean = false
+  ): Promise<ReplaceResult | null> {
+    if (isTauriEnv()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        return await invoke<ReplaceResult | null>('replace_cell', {
+          row,
+          col,
+          query,
+          replacement,
+          caseSensitive,
+          useRegex,
+        });
+      } catch (err) {
+        console.warn('Tauri replace_cell failed, falling back to WebWorker:', err);
+      }
+    }
+
+    return sendWorkerMessage<ReplaceResult | null>('REPLACE_CELL', {
+      row,
+      col,
+      query,
+      replacement,
+      caseSensitive,
+      useRegex,
+    });
+  }
+
+  /**
+   * 全文または特定列の一括文字列置換 (Replace All)
+   */
+  static async replaceAll(
+    query: string,
+    replacement: string,
+    caseSensitive: boolean = false,
+    useRegex: boolean = false,
+    columnFilter: number | null = null
+  ): Promise<ReplaceAllResponse> {
+    if (isTauriEnv()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        return await invoke<ReplaceAllResponse>('replace_all', {
+          query,
+          replacement,
+          caseSensitive,
+          useRegex,
+          columnFilter,
+        });
+      } catch (err) {
+        console.warn('Tauri replace_all failed, falling back to WebWorker:', err);
+      }
+    }
+
+    return sendWorkerMessage<ReplaceAllResponse>('REPLACE_ALL', {
+      query,
+      replacement,
+      caseSensitive,
+      useRegex,
+      columnFilter,
+    });
   }
 
 // UPDATE 2026-08-26: [テキスト表示 & 未保存セル管理連携]

@@ -7,9 +7,10 @@ import {
   CellRange,
   SearchMatch,
   SortConfig,
+  SelectionStats,
 } from '../types/csv';
 import { TauriBridge } from '../services/tauriBridge';
-import { ArrowUpDown, ArrowUp, ArrowDown, Copy } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, Copy, Check } from 'lucide-react';
 import { TableContextMenu, ContextMenuTarget } from './TableContextMenu';
 
 interface VirtualTableProps {
@@ -22,6 +23,8 @@ interface VirtualTableProps {
   sortConfig: SortConfig;
   onSortColumn: (colIndex: number) => void;
   onCellEdited: (row: number, col: number, value: string) => void;
+  onBatchCellEdited?: (changes: Array<{ row: number; col: number; prevValue: string; newValue: string }>) => void;
+  onSelectionStatsChange?: (stats: SelectionStats | null) => void;
   modifiedCells?: Set<string>;
   jumpToRowTrigger: number | null;
   filterIndices?: number[] | null;
@@ -128,6 +131,8 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
   sortConfig,
   onSortColumn,
   onCellEdited,
+  onBatchCellEdited,
+  onSelectionStatsChange,
   modifiedCells,
   jumpToRowTrigger,
   filterIndices,
@@ -260,6 +265,160 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
       console.error('Failed to copy TSV to clipboard:', err);
     }
   }, [metadata, selectedRange, activeCell, filterIndices, sortConfig]);
+
+  // UPDATE 2026-08-26: [列幅自動調整 (Auto-Fit Column Width)]
+  // なぜ: ヘッダー境界ダブルクリックで、現在読み込まれているスライスデータとヘッダーの最長幅に合わせて瞬時に列幅を最適化するため。
+  const handleAutoFitColumn = useCallback((colIdx: number) => {
+    if (!metadata) return;
+    const headerText = metadata.headers[colIdx] || '';
+    let maxLen = 0;
+
+    // ヘッダー文字列長（全角文字を2文字、半角文字を1文字換算）
+    let headerWeight = 0;
+    for (const char of headerText) {
+      headerWeight += char.charCodeAt(0) > 127 ? 2 : 1;
+    }
+    maxLen = Math.max(maxLen, headerWeight);
+
+    // 読み込んでいるスライス行（visibleRows）のセル文字列長を走査
+    for (const row of visibleRows) {
+      const cellVal = row[colIdx] || '';
+      let cellWeight = 0;
+      for (const char of cellVal) {
+        cellWeight += char.charCodeAt(0) > 127 ? 2 : 1;
+      }
+      maxLen = Math.max(maxLen, cellWeight);
+    }
+
+    // 1文字あたり約 8.5px + 左右パディング 36px (ソートアイコン・余白含む)
+    const optimalWidth = Math.max(MIN_COL_WIDTH, Math.min(600, Math.ceil(maxLen * 8.5) + 36));
+    setColumnWidths((prev) => {
+      const next = [...prev];
+      next[colIdx] = optimalWidth;
+      return next;
+    });
+  }, [metadata, visibleRows]);
+
+  // UPDATE 2026-08-26: [クリップボードからの矩形貼り付け (Ctrl + V)]
+  // なぜ: 表計算ソフトやテキストエディタからコピーした2次元TSV/CSVテキストを、アクティブセル起点で一括流し込み可能にするため。
+  const handlePasteClipboard = useCallback(async () => {
+    if (!metadata || !activeCell || editingCell) return;
+    try {
+      const clipboardText = await navigator.clipboard.readText();
+      if (!clipboardText) return;
+
+      const rawLines = clipboardText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+      if (rawLines.length > 0 && rawLines[rawLines.length - 1] === '') {
+        rawLines.pop(); // 末尾の空行を除去
+      }
+      if (rawLines.length === 0) return;
+
+      const startRow = activeCell.row;
+      const startCol = activeCell.col;
+      const changes: Array<{ row: number; col: number; prevValue: string; newValue: string }> = [];
+
+      for (let r = 0; r < rawLines.length; r++) {
+        const line = rawLines[r];
+        const targetRow = startRow + r;
+        if (targetRow >= metadata.totalRows) break; // テーブル範囲外は切り捨て
+
+        // TSV優先分割（タブが含まれない場合はCSVカンマ分割）
+        const cells = line.includes('\t') ? line.split('\t') : line.split(',');
+
+        for (let c = 0; c < cells.length; c++) {
+          const targetCol = startCol + c;
+          if (targetCol >= metadata.totalCols) break;
+
+          let val = cells[c];
+          // クォート除去
+          if (val.startsWith('"') && val.endsWith('"') && val.length >= 2) {
+            val = val.slice(1, -1).replace(/""/g, '"');
+          }
+
+          // 現在のスライス内から既存値を取得
+          const rowInSlice = targetRow - sliceStartRow;
+          const currentSliceRow = visibleRows[rowInSlice];
+          const prevVal = (currentSliceRow && currentSliceRow[targetCol]) || '';
+
+          changes.push({
+            row: targetRow,
+            col: targetCol,
+            prevValue: prevVal,
+            newValue: val,
+          });
+        }
+      }
+
+      if (changes.length > 0 && onBatchCellEdited) {
+        onBatchCellEdited(changes);
+        const pastedRowCount = rawLines.length;
+        const pastedColCount = changes.length > 0 ? Math.ceil(changes.length / pastedRowCount) : 1;
+        setCopyToast({
+          message: `📋 貼り付け完了: ${pastedRowCount} 行 × ${pastedColCount} 列 (${changes.length} セル)`,
+          visible: true,
+        });
+        setTimeout(() => {
+          setCopyToast((prev) => (prev ? { ...prev, visible: false } : null));
+        }, 2500);
+      }
+    } catch (err) {
+      console.warn('Failed to read clipboard text for paste:', err);
+    }
+  }, [metadata, activeCell, editingCell, visibleRows, sliceStartRow, onBatchCellEdited]);
+
+  // UPDATE 2026-08-26: [選択セル範囲の簡易統計（合計・平均・件数・最大・最小）]
+  // なぜ: 複数セル選択時にステータスバーへ数値集計情報をリアルタイムに反映させるため。
+  useEffect(() => {
+    if (!onSelectionStatsChange) return;
+
+    if (!selectedRange) {
+      onSelectionStatsChange(null);
+      return;
+    }
+
+    const minR = Math.min(selectedRange.startRow, selectedRange.endRow);
+    const maxR = Math.max(selectedRange.startRow, selectedRange.endRow);
+    const minC = Math.min(selectedRange.startCol, selectedRange.endCol);
+    const maxC = Math.max(selectedRange.startCol, selectedRange.endCol);
+
+    const totalCells = (maxR - minR + 1) * (maxC - minC + 1);
+    if (totalCells <= 1) {
+      onSelectionStatsChange(null);
+      return;
+    }
+
+    // 表示中スライス（visibleRows）のセルから数値を抽出して簡易統計を算出
+    let numCount = 0;
+    let sum = 0;
+    let minVal: number | null = null;
+    let maxVal: number | null = null;
+
+    visibleRows.forEach((row, sliceIdx) => {
+      const physicalR = originalRowIndices[sliceIdx] !== undefined ? originalRowIndices[sliceIdx] : sliceStartRow + sliceIdx;
+      if (physicalR >= minR && physicalR <= maxR) {
+        for (let c = minC; c <= maxC; c++) {
+          const val = row[c] ?? '';
+          const clean = val.replace(/,/g, '').trim();
+          if (clean !== '' && !isNaN(Number(clean))) {
+            const num = Number(clean);
+            numCount++;
+            sum += num;
+            if (minVal === null || num < minVal) minVal = num;
+            if (maxVal === null || num > maxVal) maxVal = num;
+          }
+        }
+      }
+    });
+
+    onSelectionStatsChange({
+      selectedCount: totalCells,
+      numericCount: numCount,
+      sum: numCount > 0 ? sum : null,
+      avg: numCount > 0 ? sum / numCount : null,
+      min: minVal,
+      max: maxVal,
+    });
+  }, [selectedRange, visibleRows, sliceStartRow, originalRowIndices, onSelectionStatsChange]);
 
   // 初期列幅の設定
   useEffect(() => {
@@ -571,6 +730,12 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
       return;
     }
 
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+      e.preventDefault();
+      handlePasteClipboard();
+      return;
+    }
+
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
       e.preventDefault();
       const allRange: CellRange = {
@@ -747,7 +912,8 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
           {metadata.headers.map((header, colIdx) => {
             const width = columnWidths[colIdx] || DEFAULT_COL_WIDTH;
             const isSorted = sortConfig.column === colIdx;
-            const isNullHeader = !hasHeader || header === 'NULL';
+            const isHeaderless = !hasHeader || header === 'NULL';
+            const displayHeader = isHeaderless ? String(colIdx + 1) : header;
 
             return (
               <div
@@ -767,11 +933,11 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
                     y: e.clientY,
                   });
                 }}
-                title={isNullHeader ? `列 ${colIdx + 1} (ヘッダーなし - NULL) (右クリックで列操作)` : `クリックでソート: ${header} (右クリックで列操作)`}
+                title={isHeaderless ? `列 ${colIdx + 1} (タイトル行なし - 列番号: ${colIdx + 1}) (右クリックで列操作)` : `クリックでソート: ${header} (右クリックで列操作)`}
               >
-                {isNullHeader ? (
-                  <span className="truncate text-gray-400 dark:text-gray-500 font-mono italic font-semibold select-none">
-                    NULL
+                {isHeaderless ? (
+                  <span className="truncate text-gray-700 dark:text-gray-300 font-mono font-bold select-none">
+                    {displayHeader}
                   </span>
                 ) : (
                   <span className="truncate text-gray-900 dark:text-gray-200 font-medium">{header}</span>
@@ -789,11 +955,17 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
                   )}
                 </div>
 
-                {/* カラム幅リサイズハンドル */}
+                {/* カラム幅リサイズハンドル（ドラッグで手動リサイズ / ダブルクリックで最適幅自動調整） */}
                 <div
                   className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500 z-10"
                   onMouseDown={(e) => handleMouseDownResize(colIdx, e)}
+                  onDoubleClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleAutoFitColumn(colIdx);
+                  }}
                   onClick={(e) => e.stopPropagation()}
+                  title="ドラッグで列幅調整 / ダブルクリックで内容幅に自動フィット"
                 />
               </div>
             );

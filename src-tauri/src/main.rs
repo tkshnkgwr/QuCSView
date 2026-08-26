@@ -10,8 +10,8 @@
 
 mod csv_engine;
 use csv_engine::{
-    CsvEngine, FileMetadata, SearchResponse, SliceResponse, SortConfig, SplitResult,
-    SupportedEncoding, SupportedLineEnding,
+    CsvEngine, FileMetadata, ReplaceAllResponse, ReplaceResult, SearchResponse, SliceResponse,
+    SortConfig, SplitResult, SupportedEncoding, SupportedLineEnding,
 };
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -280,6 +280,41 @@ fn clear_modified_cells(state: State<AppState>) -> Result<bool, String> {
     Ok(engine.clear_modified_cells())
 }
 
+/// 単一セルの文字列置換
+#[tauri::command]
+fn replace_cell(
+    row: usize,
+    col: usize,
+    query: String,
+    replacement: String,
+    case_sensitive: bool,
+    use_regex: bool,
+    state: State<AppState>,
+) -> Result<Option<ReplaceResult>, String> {
+    let mut engine = state.engine.lock().map_err(|e| e.to_string())?;
+    Ok(engine.replace_cell(row, col, &query, &replacement, case_sensitive, use_regex))
+}
+
+/// 全文または特定列の一括文字列置換
+#[tauri::command]
+fn replace_all(
+    query: String,
+    replacement: String,
+    case_sensitive: bool,
+    use_regex: bool,
+    column_filter: Option<usize>,
+    state: State<AppState>,
+) -> Result<ReplaceAllResponse, String> {
+    let mut engine = state.engine.lock().map_err(|e| e.to_string())?;
+    Ok(engine.replace_all(
+        &query,
+        &replacement,
+        case_sensitive,
+        use_regex,
+        column_filter,
+    ))
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(AppState {
@@ -293,6 +328,8 @@ fn main() {
             get_col_data,
             get_range_tsv,
             edit_cell,
+            replace_cell,
+            replace_all,
             set_has_header,
             set_encoding,
             insert_row,

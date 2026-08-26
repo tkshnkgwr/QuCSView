@@ -9,7 +9,7 @@ When working in this workspace, you MUST load and strictly adhere to the followi
 👉 **[Global Rules (RULES.md)](./RULES.md)**
 👉 **[Agent Guidelines (.agents/AGENTS.md)](./.agents/AGENTS.md)**
 
-- Apply the rules specified in `RULES.md` ("No auto-commit/push", "Vertical alignment of Markdown tables", "Address the user as 'ボス' in Japanese", "Use Mermaid for diagrams", "Skip pre-verification on Markdown-only changes") without exception.
+- Apply the rules specified in `RULES.md` ("No auto-commit/push", "Vertical alignment of Markdown tables", "Address the user as 'ボス' in Japanese", "Use Mermaid for diagrams", "Skip pre-verification on Markdown-only changes", "Commit messages in Japanese with English Conventional Commits prefixes") without exception.
 - Perform a self-check against the above rules before every tool execution and file write.
 - For source code changes (`*.rs`, `*.ts`, etc.), strictly execute the pre-commit verification steps (Rust: `cargo fmt`, `cargo check`, `cargo clippy`, `cargo test` / TypeScript: `npm run lint`, `npm run test`). Skip these checks when only Markdown files (`*.md`) are modified.
 - When instructed by the user (ボス) to "リリースして" (release), follow the release protocol in `.agents/AGENTS.md` (synchronize version, execute full verification, create tag, and push).

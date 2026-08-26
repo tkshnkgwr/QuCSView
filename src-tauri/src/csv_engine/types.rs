@@ -109,3 +109,25 @@ pub struct SplitResult {
     /// 分割対象となった総行数
     pub total_rows: usize,
 }
+
+/// 単一セルの置換結果
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReplaceResult {
+    /// 置換された行インデックス (0-indexed)
+    pub row: usize,
+    /// 置換された列インデックス (0-indexed)
+    pub col: usize,
+    /// 置換前の文字列値
+    pub prev_value: String,
+    /// 置換後の新しい文字列値
+    pub new_value: String,
+}
+
+/// 一括置換レスポンス
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReplaceAllResponse {
+    /// 置換された総セル件数
+    pub replaced_count: usize,
+    /// 各セルの変更詳細リスト（Undo用）
+    pub changes: Vec<ReplaceResult>,
+}

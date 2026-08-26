@@ -15,7 +15,7 @@ impl CsvEngine {
         if !has_header {
             self.total_rows = total_lines;
             self.headers = (1..=self.total_cols.max(1))
-                .map(|i| format!("Col {}", i))
+                .map(|i| i.to_string())
                 .collect();
         } else {
             self.total_rows = if total_lines > 0 { total_lines - 1 } else { 0 };
