@@ -12,6 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.0] - 2026-08-26
+
+### Added
+- **Official General Availability Release (v1.0.0)**:
+  - Stable, high-speed preview & in-place cell editing for massive 500MB+ CSV/TSV files with zero memory bloat.
+  - Completed single-responsibility modular refactoring of Rust native core (`csv_engine`: `grid`, `io`, `search`, `types`, `tests`).
+  - Automated GitHub Actions CI workflow (`.github/workflows/ci.yml`) and Release CD workflow (`.github/workflows/release.yml`).
+  - TypeDoc HTML documentation generation and full Rustdoc coverage.
+  - Native IPC handlers for clipboard TSV extraction, dynamic encoding switches, and column/row data queries.
+
+---
+
 ## [0.3.0] - 2026-08-26
 
 ### Added

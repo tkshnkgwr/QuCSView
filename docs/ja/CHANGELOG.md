@@ -11,6 +11,18 @@
 
 ---
 
+## [1.0.0] - 2026-08-26
+
+### 追加 (Added)
+- **正式版メジャーリリース (v1.0.0)**:
+  - 500MB超の大規模CSV/TSV高速プレビュー＆インプレース編集の安定稼働を達成。
+  - Rustネイティブエンジン (`csv_engine`) の単一責任モジュール分割リファクタリング (`grid`, `io`, `search`, `types`, `tests`) を完了。
+  - GitHub Actions による Push 時の自動コンパイル・CI ワークフロー (`.github/workflows/ci.yml`) および リリース自動化 CD ワークフロー (`.github/workflows/release.yml`) を配備。
+  - TypeDoc による TypeScript HTML API ドキュメント生成および Rustdoc API ドキュメントの完全整備。
+  - クリップボードTSV範囲コピー、エンコーディング即時変換、列/行データ抽出の Rust ネイティブ IPC ハンドラを統合。
+
+---
+
 ## [0.3.0] - 2026-08-26
 
 ### 追加 (Added)

@@ -1,6 +1,6 @@
 [package]
 name = "qu-cs-view"
-version = "0.1.0"
+version = "1.0.0"
 description = "Ultra-fast CSV/TSV Preview and In-Place Editor for Massive Files"
 authors = ["QuCSV Team"]
 edition = "2021"
