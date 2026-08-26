@@ -1,36 +1,75 @@
-# リリース手順書 (Release Guide)
+# リリース・パッケージングガイド (RELEASE)
 
 [English](../../docs/en/RELEASE.md) | **日本語版**
 
 ---
 
-## 1. バージョニング規約
+## 1. バージョン管理規約
 
-QuCSVPreviewは **セマンティック バージョニング (Semantic Versioning 2.0.0)** に準拠します。
+本プロジェクトは **セマンティック バージョニング (Semantic Versioning 2.0.0)** に準拠します。
+`MAJOR.MINOR.PATCH` (例: `0.1.1`)
 
-- **MAJOR (X.0.0)**: 互換性のない破壊的変更やアーキテクチャの大幅刷新
-- **MINOR (0.X.0)**: 後方互換性のある新機能の追加（新規ファイル形式対応、ソート拡張等）
-- **PATCH (0.0.X)**: 後方互換性のあるバグ修正や軽微なパフォーマンス改善
+- **MAJOR**: 互換性のないUI/データ構造の変更
+- **MINOR**: 後方互換性のある新機能追加
+- **PATCH**: 後方互換性のあるバグ修正・軽微な改善
 
 ---
 
-## 2. リリース手順フロー
+## 2. リリース準備チェックリスト (Single Source Versioning)
 
-### 1. バージョン番号の更新
-- `package.json` の `"version"` を更新
-- `src-tauri/tauri.conf.json` の `"version"` を更新
-- `src-tauri/Cargo.toml` の `version` を更新
+バージョン更新時は、以下の Single Source of Truth に基づき更新を行います。
 
-### 2. CHANGELOG.md の更新
-- `[Unreleased]` セクションの内容を新しいバージョン番号およびリリース日に更新
+| 項目                         | ファイル / 場所                                                       |
+| :--------------------------- | :-------------------------------------------------------------------- |
+| フロントエンド標準バージョン | [`package.json`](file:///c:/Users/632792/Documents/自作/QuCSView/package.json)                   |
+| Rust クレートバージョン      | [`src-tauri/Cargo.toml`](file:///c:/Users/632792/Documents/自作/QuCSView/src-tauri/Cargo.toml)  |
+| Tauri アプリケーション定義    | [`src-tauri/tauri.conf.json`](file:///c:/Users/632792/Documents/自作/QuCSView/src-tauri/tauri.conf.json) |
+| 日本語更新履歴               | [`docs/ja/CHANGELOG.md`](file:///c:/Users/632792/Documents/自作/QuCSView/docs/ja/CHANGELOG.md)   |
+| 英語更新履歴                 | [`docs/en/CHANGELOG.md`](file:///c:/Users/632792/Documents/自作/QuCSView/docs/en/CHANGELOG.md)   |
 
-### 3. Git タグの作成とプッシュ
+---
+
+## 3. CI / CD 自動化ワークフロー (GitHub Actions)
+
+### 3.1 CI ワークフロー (`.github/workflows/ci.yml`)
+
+- **トリガー**: `main` ブランチへの `push`（Markdown変更除外）および `pull_request`
+- **処理内容**:
+  - TypeScript 型チェック (`npm run lint`)
+  - Vitest 単体テスト (`npm run test`)
+  - Rust コード整形・Clippy静的解析 (`cargo fmt`, `cargo clippy`)
+  - Rust ユニットテスト (`cargo test`)
+  - Tauri バックエンドコンパイル検証 (`cargo check`)
+
+### 3.2 リリース自動化ワークフロー (`.github/workflows/release.yml`)
+
+- **トリガー**: `v*` タグのプッシュ（例: `git push origin v0.1.1`）または GitHub Actions 手動トリガー (`workflow_dispatch`)
+- **処理内容**:
+  - 品質事前チェックの自動実行
+  - Windows デスクトップアプリバイナリ (`.msi` / `.exe` インストーラー) の全自動ビルド
+  - GitHub Releases ページの自動生成とインストーラーバイナリアタッチ
+
+---
+
+## 4. リリース実行手順 (ボス用手順)
+
+### ワンコマンドでのバージョン同期
 ```bash
-git commit -am "chore(release): v0.1.0"
-git tag -a v0.1.0 -m "Release v0.1.0"
-git push origin main --tags
+# patch バージョンアップ (例: 0.1.0 -> 0.1.1)
+npm run release
+
+# minor バージョンアップ (例: 0.1.0 -> 0.2.0)
+npm run release minor
+
+# major バージョンアップ (例: 0.1.0 -> 1.0.0)
+npm run release major
 ```
 
-### 4. GitHub Actions 自動ビルド & リリース
-- タグのプッシュにより GitHub Actions ワークフロー（`.github/workflows/release.yml`）が自動起動。
-- Windows x64 向けの `.msi`, `.exe`, ポータブル版 `.zip` がビルドされ、GitHub Releasesに自動ドラフト作成されます。
+### Git コミット・タグ作成とプッシュ (GitHub Releases 発動)
+```bash
+git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json
+git commit -m "release: bump version to v0.1.1"
+git tag v0.1.1
+git push origin main
+git push origin v0.1.1
+```

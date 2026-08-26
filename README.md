@@ -86,13 +86,13 @@ graph TD
 
 ## 📊 Target Resource Footprints
 
-| Metric | Target | Actual |
-| :--- | :--- | :--- |
-| **Cold Startup Time** | `< 300 ms` | **~180 ms** |
-| **500MB File Open Time** | `< 1.0 s` | **~420 ms** |
-| **Idle RAM Consumption** | `< 40 MB` | **~32 MB** |
-| **Peak RAM (500MB File)** | `< 60 MB` | **~48 MB** |
-| **Executable Binary Size** | `< 15 MB` | **~12.4 MB** |
+| Metric                     | Target     | Actual      |
+| :------------------------- | :--------- | :---------- |
+| **Cold Startup Time**      | `< 300 ms` | **~180 ms** |
+| **500MB File Open Time**   | `< 1.0 s`  | **~420 ms** |
+| **Idle RAM Consumption**   | `< 40 MB`  | **~32 MB**  |
+| **Peak RAM (500MB File)**  | `< 60 MB`  | **~48 MB**  |
+| **Executable Binary Size** | `< 15 MB`  | **~12.4 MB**|
 
 ---
 

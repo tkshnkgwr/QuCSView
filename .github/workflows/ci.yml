@@ -1,0 +1,56 @@
+name: CI - Quality Check & Unit Tests
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  lint-and-test:
+    name: Lint TypeScript & Run Rust Unit Tests
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - name: Install Frontend Dependencies
+        run: npm install
+
+      - name: Check Rust Formatting
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
+
+      - name: Run Clippy
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+
+      - name: TypeScript Lint & Type Check
+        run: npm run lint
+
+      - name: Run Frontend Unit Tests (Vitest)
+        run: npm run test
+
+      - name: Run Rust Unit Tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Cargo Check (Compile verification)
+        run: cargo check --manifest-path src-tauri/Cargo.toml

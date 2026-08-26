@@ -204,6 +204,82 @@ fn save_csv(
     Ok(true)
 }
 
+/// 選択範囲のセルデータをTSV（タブ区切り）形式で取得（クリップボードコピー用）
+#[tauri::command]
+fn get_range_tsv(
+    start_row: usize,
+    end_row: usize,
+    start_col: usize,
+    end_col: usize,
+    filter_indices: Option<Vec<usize>>,
+    sort_config: Option<SortConfig>,
+    state: State<AppState>,
+) -> Result<serde_json::Value, String> {
+    let engine = state.engine.lock().map_err(|e| e.to_string())?;
+    let (tsv_text, row_count, col_count) = engine
+        .get_range_tsv(
+            start_row,
+            end_row,
+            start_col,
+            end_col,
+            filter_indices.as_deref(),
+            sort_config.as_ref(),
+        )
+        .map_err(|e| e.to_string())?;
+    Ok(serde_json::json!({
+        "tsvText": tsv_text,
+        "rowCount": row_count,
+        "colCount": col_count,
+    }))
+}
+
+/// 文字コードおよび区切り文字を再設定してテーブルを再デコード
+#[tauri::command]
+fn set_encoding(
+    encoding: SupportedEncoding,
+    custom_delimiter: Option<char>,
+    state: State<AppState>,
+) -> Result<FileMetadata, String> {
+    let mut engine = state.engine.lock().map_err(|e| e.to_string())?;
+    engine
+        .set_encoding(encoding, custom_delimiter)
+        .map_err(|e| e.to_string())
+}
+
+/// 指定行の全セルデータを取得
+#[tauri::command]
+fn get_row_data(row: usize, state: State<AppState>) -> Result<Vec<String>, String> {
+    let engine = state.engine.lock().map_err(|e| e.to_string())?;
+    engine.get_row_data(row).map_err(|e| e.to_string())
+}
+
+/// 指定列の全セルデータを取得
+#[tauri::command]
+fn get_col_data(col: usize, state: State<AppState>) -> Result<Vec<String>, String> {
+    let engine = state.engine.lock().map_err(|e| e.to_string())?;
+    Ok(engine.get_col_data(col))
+}
+
+/// 生テキスト編集後の文字列からテーブル全体を再構築
+#[tauri::command]
+fn update_from_text(
+    text: String,
+    custom_delimiter: Option<char>,
+    state: State<AppState>,
+) -> Result<FileMetadata, String> {
+    let mut engine = state.engine.lock().map_err(|e| e.to_string())?;
+    engine
+        .update_from_text(&text, custom_delimiter)
+        .map_err(|e| e.to_string())
+}
+
+/// 保存完了時に未保存マーク（差分バッファ）をクリア
+#[tauri::command]
+fn clear_modified_cells(state: State<AppState>) -> Result<bool, String> {
+    let mut engine = state.engine.lock().map_err(|e| e.to_string())?;
+    Ok(engine.clear_modified_cells())
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(AppState {
@@ -213,8 +289,12 @@ fn main() {
             open_csv_file,
             get_slice,
             get_cell_value,
+            get_row_data,
+            get_col_data,
+            get_range_tsv,
             edit_cell,
             set_has_header,
+            set_encoding,
             insert_row,
             delete_row,
             duplicate_row,
@@ -224,6 +304,8 @@ fn main() {
             search_csv,
             split_csv,
             get_raw_text,
+            update_from_text,
+            clear_modified_cells,
             save_csv,
         ])
         .run(tauri::generate_context!())

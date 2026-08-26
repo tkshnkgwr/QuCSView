@@ -336,6 +336,17 @@ export class TauriBridge {
     text: string,
     customDelimiter?: SupportedDelimiter
   ): Promise<FileMetadata> {
+    if (isTauriEnv()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        return await invoke<FileMetadata>('update_from_text', {
+          text,
+          customDelimiter: customDelimiter || null,
+        });
+      } catch (err) {
+        console.warn('Tauri update_from_text failed, falling back to WebWorker:', err);
+      }
+    }
     return sendWorkerMessage<FileMetadata>('UPDATE_FROM_TEXT', {
       text,
       customDelimiter,
@@ -346,6 +357,14 @@ export class TauriBridge {
    * 未保存編集セルのリセット（保存完了時）
    */
   static async clearModifiedCells(): Promise<boolean> {
+    if (isTauriEnv()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        return await invoke<boolean>('clear_modified_cells');
+      } catch (err) {
+        console.warn('Tauri clear_modified_cells failed, falling back to WebWorker:', err);
+      }
+    }
     return sendWorkerMessage<boolean>('CLEAR_MODIFIED_CELLS', {});
   }
 
@@ -370,6 +389,14 @@ export class TauriBridge {
    * 1行分の全セルデータを取得
    */
   static async getRowData(row: number): Promise<string[]> {
+    if (isTauriEnv()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        return await invoke<string[]>('get_row_data', { row });
+      } catch (err) {
+        console.warn('Tauri get_row_data failed, falling back to WebWorker:', err);
+      }
+    }
     return sendWorkerMessage<string[]>('GET_ROW_DATA', { row });
   }
 
@@ -377,6 +404,14 @@ export class TauriBridge {
    * 1列分の全セルデータを取得
    */
   static async getColData(col: number): Promise<string[]> {
+    if (isTauriEnv()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        return await invoke<string[]>('get_col_data', { col });
+      } catch (err) {
+        console.warn('Tauri get_col_data failed, falling back to WebWorker:', err);
+      }
+    }
     return sendWorkerMessage<string[]>('GET_COL_DATA', { col });
   }
 

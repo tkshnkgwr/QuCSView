@@ -9,5 +9,16 @@
   "out": "docs/api",
   "name": "QuCSView API Documentation",
   "readme": "README.md",
-  "includeVersion": true
+  "includeVersion": true,
+  "highlightLanguages": [
+    "typescript",
+    "javascript",
+    "rust",
+    "mermaid",
+    "json",
+    "bash",
+    "powershell",
+    "html",
+    "css"
+  ]
 }

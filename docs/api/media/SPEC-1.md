@@ -70,15 +70,20 @@ When opening tabular data in Microsoft Excel, multiple destructive auto-conversi
 - Range selection using Shift+Click, Shift+Arrows, Mouse Drag, or `Ctrl + A` (Select All).
 - Copies clean Tab-Separated Values (TSV) directly to clipboard with a confirmation floating toast.
 
-### 4.3 High-Performance RegEx Search & Filter Mode
-- Full-text search supporting case sensitivity (`Aa`) and regular expressions (`.*`).
-- Error-safe syntax handling and highlighted matched substrings via `<mark>` elements.
-- Filter mode to isolate matching rows while retaining source physical line numbers.
+## 4. UI Architecture & Core Features
 
-### 4.4 In-Place Context Menu (Right-Click)
-- Right-clicking on any header, row number, or cell brings up `TableContextMenu`:
-  - **Row actions**: Insert row above/below, duplicate row, delete row.
-  - **Column actions**: Insert column left/right, duplicate column, delete column.
+### 4.1 Virtual Table Viewport (`VirtualTable`)
+- Renders only 30–50 rows in the active DOM viewport via bidirectional dynamic slicing.
+
+### 4.2 RegEx Full-Text Search Bar
+- Supports PCRE-compatible regular expressions (e.g., `^\d{3}-\d{4}$`) with zero lag.
+
+### 4.3 High-Contrast Sticky Row Numbers & Row Selection
+- Leftmost row number column (`#`) remains frozen on horizontal scrolling.
+
+### 4.4 In-Place Context Menu (`TableContextMenu`)
+- **Row actions**: Insert row above/below, duplicate row, delete row.
+- **Column actions**: Insert column left/right, duplicate column, delete column.
 
 ### 4.5 Full Undo / Redo History Stack
 - `Ctrl + Z` to undo and `Ctrl + Y` (or `Ctrl + Shift + Z`) to redo.
@@ -94,22 +99,22 @@ When opening tabular data in Microsoft Excel, multiple destructive auto-conversi
 
 ## 5. Keyboard Shortcuts
 
-| Shortcut | Scope | Action |
-| :--- | :--- | :--- |
-| **`Ctrl + Z`** | Table | Undo previous edit or row/col operation |
-| **`Ctrl + Y` / `Ctrl + Shift + Z`** | Table | Redo undone action |
-| **`Right-Click`** | Cell / Row / Header | Open structural Context Menu |
-| **`Ctrl + O`** | Global | Open file dialog |
-| **`Ctrl + S`** | Global | Quick save file with current encoding |
-| **`Ctrl + Shift + S`** | Global | Open Save As & Export Settings dialog |
-| **`Ctrl + C`** | Table | Copy selected cell range / row as TSV |
-| **`Ctrl + A`** | Table | Select all cells in the table |
-| **`Shift + Arrow / Click`** | Table | Expand cell range selection |
-| **`Ctrl + F`** | Global | Focus full-text search input |
-| **`F1`** | Global | Toggle Help & Shortcuts modal |
-| **`Enter` / `F2`** | Cell Selected | Begin in-place cell editing |
-| **`Enter`** | Cell Editing | Commit edit and move down |
-| **`Tab`** | Cell Editing | Commit edit and move right (`Shift+Tab` for left) |
-| **`Esc`** | Cell Editing | Cancel edit and rollback value |
-| **`Arrow Keys`** | Cell Selected | Move active cell selection |
-| **`PageUp / PageDown`** | Cell Selected | Fast scroll viewport |
+| Shortcut                              | Scope                | Action                                                |
+| :------------------------------------ | :------------------- | :---------------------------------------------------- |
+| **`Ctrl + Z`**                        | Table                | Undo previous edit or row/col operation               |
+| **`Ctrl + Y` / `Ctrl + Shift + Z`**   | Table                | Redo undone action                                    |
+| **`Right-Click`**                     | Cell / Row / Header  | Open structural Context Menu                          |
+| **`Ctrl + O`**                        | Global               | Open file dialog                                      |
+| **`Ctrl + S`**                        | Global               | Quick save file with current encoding                 |
+| **`Ctrl + Shift + S`**                | Global               | Open Save As & Export Settings dialog                 |
+| **`Ctrl + C`**                        | Table                | Copy selected cell range / row as TSV                 |
+| **`Ctrl + A`**                        | Table                | Select all cells in the table                         |
+| **`Shift + Arrow / Click`**           | Table                | Expand cell range selection                           |
+| **`Ctrl + F`**                        | Global               | Focus full-text search input                          |
+| **`F1`**                              | Global               | Toggle Help & Shortcuts modal                         |
+| **`Enter` / `F2`**                    | Cell Selected        | Begin in-place cell editing                           |
+| **`Enter`**                           | Cell Editing         | Commit edit and move down                             |
+| **`Tab`**                             | Cell Editing         | Commit edit and move right (`Shift+Tab` for left)     |
+| **`Esc`**                             | Cell Editing         | Cancel edit and rollback value                        |
+| **`Arrow Keys`**                      | Cell Selected        | Move active cell selection                            |
+| **`PageUp / PageDown`**               | Cell Selected        | Fast scroll viewport                                  |

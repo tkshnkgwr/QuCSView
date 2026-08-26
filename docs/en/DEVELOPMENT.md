@@ -30,9 +30,32 @@ npm run tauri dev
 npm run dev
 ```
 
+### Run Unit Tests
+```bash
+# Rust backend unit tests
+cargo test --manifest-path src-tauri/Cargo.toml
+
+# Frontend Vitest unit tests
+npm run test
+```
+
 ### Run Linter & Type Checks
 ```bash
+# TypeScript type check
 npm run lint
+
+# Rust formatting & Clippy analysis
+cargo fmt --manifest-path src-tauri/Cargo.toml --check
+cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+```
+
+### Generate API Documentation
+```bash
+# TypeDoc (TypeScript API) -> docs/api/
+npm run doc
+
+# Rustdoc (Rust Backend API) -> src-tauri/target/doc/
+cargo doc --manifest-path src-tauri/Cargo.toml --no-deps
 ```
 
 ---

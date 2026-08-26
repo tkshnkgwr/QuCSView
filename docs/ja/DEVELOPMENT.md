@@ -31,9 +31,32 @@ npm run tauri dev
 npm run dev
 ```
 
+### ユニットテストの実行
+```bash
+# Rust バックエンドテスト
+cargo test --manifest-path src-tauri/Cargo.toml
+
+# フロントエンド Vitest テスト
+npm run test
+```
+
 ### 型チェック & リンターの実行
 ```bash
+# TypeScript 型検証
 npm run lint
+
+# Rust コード整形 & Clippy 静的解析
+cargo fmt --manifest-path src-tauri/Cargo.toml --check
+cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+```
+
+### APIドキュメントの生成
+```bash
+# TypeDoc (TypeScript API) の生成 -> docs/api/
+npm run doc
+
+# Rustdoc (Rust Backend API) の生成 -> src-tauri/target/doc/
+cargo doc --manifest-path src-tauri/Cargo.toml --no-deps
 ```
 
 ---

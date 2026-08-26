@@ -41,3 +41,11 @@ QuCSView は、リソース制限のあるWindows環境でも500MB超のCSV/TSV�
 ### 4. コード規模とリファクタリング
 - 単一ソース (`*.ts`, `*.tsx`, `*.rs`) が 1,000 行を超えた場合はモジュール分割リファクタリングを積極的に提案・推進すること。
 
+### 5. リリース自動化プロトコル（「リリースして」指示時の対応）
+- ボスから **「リリースして」** とチャットで指示された際は、以下のリリース手順を全自動で実行すること：
+  1. `node scripts/release.js patch` （またはボス指定のバージョン）を実行し、`package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json` のバージョンを完全同期。
+  2. 6大事前強制検証（`cargo fmt`, `check`, `clippy`, `test`, `npm run lint`, `test`）を全自動実行。
+  3. バージョン更新ファイルをコミットし、`vX.Y.Z` の Git タグを作成して `origin/main` およびタグラベルを Push。
+  4. GitHub Actions Release ワークフローの発動を確認し、ボスへ報告。
+
+
