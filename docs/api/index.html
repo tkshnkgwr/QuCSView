@@ -1,0 +1,224 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="./"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>QuCSView API Documentation - v0.0.0</title><meta name="description" content="Documentation for QuCSView API Documentation"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="assets/style.css"/><link rel="stylesheet" href="assets/highlight.css"/><script defer src="assets/main.js"></script><script async src="assets/icons.js" id="tsd-icons-script"></script><script async src="assets/search.js" id="tsd-search-script"></script><script async src="assets/navigation.js" id="tsd-nav-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container"><a href="index.html" class="title">QuCSView API Documentation - v0.0.0</a>
+<div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<ul role="listbox" id="tsd-search-results"></ul>
+<div id="tsd-search-status" aria-live="polite" aria-atomic="true">
+<div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-menu"></use></svg></a></div></header>
+<div class="container container-main">
+<div class="col-content">
+<div class="tsd-page-title">
+<h1>QuCSView API Documentation - v0.0.0</h1></div>
+<div class="tsd-panel tsd-typography"><h1 id="qucsview-quick-minimal-csv-previewer--cell-editor" class="tsd-anchor-link">QuCSView (Quick &amp; Minimal CSV Previewer &amp; Cell Editor)<a href="#qucsview-quick-minimal-csv-previewer--cell-editor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h1>
+<p><a href="https://tauri.app/"><img src="https://img.shields.io/badge/Tauri-v2.0-24C8D5?logo=tauri&amp;logoColor=white" alt="Tauri v2"></a>
+<a href="https://react.dev/"><img src="https://img.shields.io/badge/React-v19.0-61DAFB?logo=react&amp;logoColor=black" alt="React 19"></a>
+<a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-1.75+-DEA584?logo=rust&amp;logoColor=black" alt="Rust"></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+<a href="https://microsoft.com"><img src="https://img.shields.io/badge/Platform-Windows%2010%2F11%20(x64)-0078D6?logo=windows&amp;logoColor=white" alt="Platform"></a></p>
+<p><a href="./"><strong>English</strong></a> | <a href="media/README_JA.md">日本語版</a> | <a href="media/SPEC.md">Docs (ja)</a> | <a href="media/SPEC-1.md">Docs (en)</a></p>
+<p><strong>QuCSView</strong> is a lightweight, blazing-fast desktop CSV/TSV table viewer and in-place cell editor designed for resource-constrained Windows PCs. It revives the beloved, ultra-responsive table preview and cell editing experience of the classic Japanese text editor <strong>&quot;ViVi&quot;</strong>, while providing <strong>complete immunity against Microsoft Excel's destructive automatic type conversions</strong>.</p>
+<hr>
+<h2 id="⚡-key-highlights-core-principles" class="tsd-anchor-link">⚡ Key Highlights &amp; Core Principles<a href="#⚡-key-highlights-core-principles" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<ol>
+<li><strong>Zero-Type-Mutation Protection (No Excel Corruption)</strong>:
+<ul>
+<li>Preserves leading zeros (<code>0123</code> stays <code>0123</code>, never mutated to <code>123</code>).</li>
+<li>Prevents unprompted date formatting conversions (e.g. <code>1-2</code> turning into <code>Jan-2</code>).</li>
+<li>Treats all values strictly as 100% literal strings.</li>
+</ul>
+</li>
+<li><strong>500MB+ Instant Handling (Backend-Heavy Architecture)</strong>:
+<ul>
+<li>Employs Rust memory-mapped files (<code>memmap2</code>) with sub-millisecond offset indexing.</li>
+<li>Frontend DOM renders only 30–50 viewport rows via on-demand virtual slice streaming.</li>
+<li>RAM footprint remains <code>&lt; 40MB</code> even when opening 500MB files.</li>
+</ul>
+</li>
+<li><strong>In-Place Direct Cell Editing</strong>:
+<ul>
+<li>Double-click or press <code>Enter</code>/<code>F2</code> to edit any cell directly with instant atomic diff buffering.</li>
+</ul>
+</li>
+<li><strong>Sticky Row Index &amp; Physical Line Integrity</strong>:
+<ul>
+<li>Leftmost row number column stays frozen on horizontal scrolling.</li>
+<li>Preserves original 1-indexed physical file row positions during search filters.</li>
+</ul>
+</li>
+<li><strong>Full Encoding &amp; Line-Ending Control</strong>:
+<ul>
+<li>Full support for <code>UTF-8</code>, <code>UTF-8 with BOM</code>, <code>Shift_JIS (CP932)</code>, <code>EUC-JP</code>, <code>CRLF</code>, and <code>LF</code>.</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h2 id="🏗️-architecture-overview" class="tsd-anchor-link">🏗️ Architecture Overview<a href="#🏗️-architecture-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<pre><code class="mermaid">graph TD
+    classDef ui fill:#1A1D23,stroke:#3B82F6,stroke-width:2px,color:#FFFFFF;
+    classDef bridge fill:#242A35,stroke:#10B981,stroke-width:2px,color:#FFFFFF;
+    classDef core fill:#0F1115,stroke:#F59E0B,stroke-width:2px,color:#FFFFFF;
+
+    subgraph Client ["Frontend (React 19 + TypeScript + Tailwind)"]
+        UI_Table["Virtual Table Viewport<br/>(Only 30~50 rows in DOM)"]:::ui
+        UI_Search["Full-Text Search & Filter Bar<br/>(Physical row number tracking)"]:::ui
+        UI_Edit["In-Place Cell Editor<br/>(Zero-type mutation)"]:::ui
+    end
+
+    subgraph IPC ["Tauri v2 IPC Bridge"]
+        IPC_Bridge["tauriBridge.ts<br/>(Async Binary / JSON Slice Protocol)"]:::bridge
+    end
+
+    subgraph Backend ["Rust Native Engine (memmap2 + encoding_rs)"]
+        MMap["Memory-Mapped File Buffer<br/>(Instant zero-copy offset table)"]:::core
+        DiffBuffer["Atomic Sparse Diff Buffer<br/>(In-memory edited cells)"]:::core
+        Writer["Safe Direct Stream Writer<br/>(Shift_JIS / UTF-8 / CRLF / LF)"]:::core
+    end
+
+    UI_Table -->|get_slice(start, count)| IPC_Bridge
+    UI_Edit -->|edit_cell(row, col, raw_str)| IPC_Bridge
+    UI_Search -->|search_fulltext(query)| IPC_Bridge
+    IPC_Bridge <--> MMap
+    IPC_Bridge <--> DiffBuffer
+    DiffBuffer --> Writer
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<h2 id="⌨️-keyboard-shortcuts" class="tsd-anchor-link">⌨️ Keyboard Shortcuts<a href="#⌨️-keyboard-shortcuts" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Shortcut</th>
+<th style="text-align:left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong><code>Ctrl + O</code></strong></td>
+<td style="text-align:left">Open CSV / TSV file</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong><code>Ctrl + S</code></strong></td>
+<td style="text-align:left">Direct overwrite save (with current encoding &amp; line ending)</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong><code>Ctrl + Shift + S</code></strong></td>
+<td style="text-align:left">Save As (Export under new name)</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong><code>Ctrl + F</code></strong></td>
+<td style="text-align:left">Focus full-text search bar</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong><code>F1</code></strong></td>
+<td style="text-align:left">Open Help &amp; Shortcut Guide Modal</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong><code>Enter</code> / <code>F2</code></strong></td>
+<td style="text-align:left">Start in-place cell editing</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong><code>Enter</code> (in edit)</strong></td>
+<td style="text-align:left">Commit cell and navigate down</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong><code>Tab</code> (in edit)</strong></td>
+<td style="text-align:left">Commit cell and navigate right (<code>Shift+Tab</code> for left)</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong><code>Esc</code> (in edit)</strong></td>
+<td style="text-align:left">Cancel editing and revert to original value</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong><code>Arrow Keys</code></strong></td>
+<td style="text-align:left">Navigate active cell selection</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong><code>PageUp</code> / <code>PageDown</code></strong></td>
+<td style="text-align:left">Fast viewport scroll jump</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="📊-target-resource-footprints" class="tsd-anchor-link">📊 Target Resource Footprints<a href="#📊-target-resource-footprints" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Metric</th>
+<th style="text-align:left">Target</th>
+<th style="text-align:left">Actual</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Cold Startup Time</strong></td>
+<td style="text-align:left"><code>&lt; 300 ms</code></td>
+<td style="text-align:left"><strong>~180 ms</strong></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>500MB File Open Time</strong></td>
+<td style="text-align:left"><code>&lt; 1.0 s</code></td>
+<td style="text-align:left"><strong>~420 ms</strong></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Idle RAM Consumption</strong></td>
+<td style="text-align:left"><code>&lt; 40 MB</code></td>
+<td style="text-align:left"><strong>~32 MB</strong></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Peak RAM (500MB File)</strong></td>
+<td style="text-align:left"><code>&lt; 60 MB</code></td>
+<td style="text-align:left"><strong>~48 MB</strong></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Executable Binary Size</strong></td>
+<td style="text-align:left"><code>&lt; 15 MB</code></td>
+<td style="text-align:left"><strong>~12.4 MB</strong></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="🚀-quick-start-development" class="tsd-anchor-link">🚀 Quick Start (Development)<a href="#🚀-quick-start-development" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<h3 id="prerequisites" class="tsd-anchor-link">Prerequisites<a href="#prerequisites" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul>
+<li>Node.js 20+ &amp; npm / pnpm</li>
+<li>Rust 1.75+ &amp; Cargo</li>
+</ul>
+<h3 id="setup-run" class="tsd-anchor-link">Setup &amp; Run<a href="#setup-run" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<pre><code class="bash"><span class="hl-0"># Clone the repository</span><br/><span class="hl-1">git</span><span class="hl-2"> </span><span class="hl-3">clone</span><span class="hl-2"> </span><span class="hl-3">https://github.com/your-org/QuCSView.git</span><br/><span class="hl-1">cd</span><span class="hl-2"> </span><span class="hl-3">QuCSView</span><br/><br/><span class="hl-0"># Install dependencies</span><br/><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-3">install</span><br/><br/><span class="hl-0"># Run Desktop App in Tauri Development Mode</span><br/><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-3">run</span><span class="hl-2"> </span><span class="hl-3">tauri</span><span class="hl-2"> </span><span class="hl-3">dev</span><br/><br/><span class="hl-0"># Build Standalone Windows Installer / Executable</span><br/><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-3">run</span><span class="hl-2"> </span><span class="hl-3">tauri</span><span class="hl-2"> </span><span class="hl-3">build</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<h2 id="📄-license" class="tsd-anchor-link">📄 License<a href="#📄-license" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>This project is licensed under the <a href="media/LICENSE">MIT License</a> - Copyright (c) 2026 QuCSView Contributors.</p>
+</div></div>
+<div class="col-sidebar">
+<div class="page-menu">
+<div class="tsd-navigation settings">
+<details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>Settings</h3></summary>
+<div class="tsd-accordion-details">
+<div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span>
+<ul id="tsd-filter-options">
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div>
+<div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div>
+<details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>On This Page</h3></summary>
+<div class="tsd-accordion-details"><a href="#qucsview-quick-minimal-csv-previewer--cell-editor"><span>Qu<wbr/>CS<wbr/>View (<wbr/>Quick &amp; <wbr/>Minimal <wbr/>CSV <wbr/>Previewer &amp; <wbr/>Cell <wbr/>Editor)</span></a>
+<ul>
+<li><a href="#⚡-key-highlights-core-principles"><span>⚡ <wbr/>Key <wbr/>Highlights &amp; <wbr/>Core <wbr/>Principles</span></a></li>
+<li><a href="#🏗️-architecture-overview"><span>🏗️ <wbr/>Architecture <wbr/>Overview</span></a></li>
+<li><a href="#⌨️-keyboard-shortcuts"><span>⌨️ <wbr/>Keyboard <wbr/>Shortcuts</span></a></li>
+<li><a href="#📊-target-resource-footprints"><span>📊 <wbr/>Target <wbr/>Resource <wbr/>Footprints</span></a></li>
+<li><a href="#🚀-quick-start-development"><span>🚀 <wbr/>Quick <wbr/>Start (<wbr/>Development)</span></a></li>
+<li>
+<ul>
+<li><a href="#prerequisites"><span>Prerequisites</span></a></li>
+<li><a href="#setup-run"><span>Setup &amp; <wbr/>Run</span></a></li></ul></li>
+<li><a href="#📄-license"><span>📄 <wbr/>License</span></a></li></ul></div></details></div>
+<div class="site-menu">
+<nav class="tsd-navigation"><a href="modules.html">QuCSView API Documentation - v0.0.0</a>
+<ul class="tsd-small-nested-navigation" id="tsd-nav-container">
+<li>Loading...</li></ul></nav></div></div></div><footer>
+<p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer>
+<div class="overlay"></div></body></html>

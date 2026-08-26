@@ -1,0 +1,443 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>TauriBridge | QuCSView API Documentation - v0.0.0</title><meta name="description" content="Documentation for QuCSView API Documentation"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container"><a href="../index.html" class="title">QuCSView API Documentation - v0.0.0</a>
+<div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<ul role="listbox" id="tsd-search-results"></ul>
+<div id="tsd-search-status" aria-live="polite" aria-atomic="true">
+<div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header>
+<div class="container container-main">
+<div class="col-content">
+<div class="tsd-page-title">
+<ul class="tsd-breadcrumb" aria-label="Breadcrumb">
+<li><a href="../modules/services_tauriBridge.html">services/tauriBridge</a></li>
+<li><a href="" aria-current="page">TauriBridge</a></li></ul>
+<h1>Class TauriBridge</h1></div>
+<section class="tsd-panel tsd-comment">
+<div class="tsd-comment tsd-typography"><p>Tauri ネイティブ (Rust) と WebWorker (JavaScript) のハイブリッドIPCブリッジ</p>
+<p>デスクトップ起動時は Rust 製高速 CSV エンジン（memmap2 / rayon / regex）にネイティブ呼び出しを行い、
+Webブラウザでのプレビュー実行時は WebWorker に自動フォールバックして同等機能を提供します。</p>
+</div></section><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:65</li></ul></aside>
+<section class="tsd-panel-group tsd-index-group">
+<section class="tsd-panel tsd-index-panel">
+<details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h5 class="tsd-index-heading uppercase">Index</h5></summary>
+<div class="tsd-accordion-details">
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading tsd-anchor-link" id="constructors">Constructors<a href="#constructors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-index-list"><a href="#constructor" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Constructor"><use href="../assets/icons.svg#icon-512"></use></svg><span>constructor</span></a>
+</div></section>
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading tsd-anchor-link" id="methods">Methods<a href="#methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-index-list"><a href="#clearmodifiedcells" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>clear<wbr/>Modified<wbr/>Cells</span></a>
+<a href="#deletecol" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>delete<wbr/>Col</span></a>
+<a href="#deleterow" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>delete<wbr/>Row</span></a>
+<a href="#duplicatecol" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>duplicate<wbr/>Col</span></a>
+<a href="#duplicaterow" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>duplicate<wbr/>Row</span></a>
+<a href="#editcell" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>edit<wbr/>Cell</span></a>
+<a href="#getcellvalue" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Cell<wbr/>Value</span></a>
+<a href="#getcoldata" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Col<wbr/>Data</span></a>
+<a href="#getcurrenttext" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Current<wbr/>Text</span></a>
+<a href="#getrangetsv" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Range<wbr/>Tsv</span></a>
+<a href="#getrowdata" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Row<wbr/>Data</span></a>
+<a href="#getslice" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Slice</span></a>
+<a href="#insertcol" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>insert<wbr/>Col</span></a>
+<a href="#insertrow" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>insert<wbr/>Row</span></a>
+<a href="#openfile" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>open<wbr/>File</span></a>
+<a href="#openfromtext" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>open<wbr/>From<wbr/>Text</span></a>
+<a href="#reloadwithencoding" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>reload<wbr/>With<wbr/>Encoding</span></a>
+<a href="#savefile" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>save<wbr/>File</span></a>
+<a href="#search" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>search</span></a>
+<a href="#sethasheader" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>set<wbr/>Has<wbr/>Header</span></a>
+<a href="#splitfile" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>split<wbr/>File</span></a>
+<a href="#updatefromtext" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>update<wbr/>From<wbr/>Text</span></a>
+</div></section></div></details></section></section>
+<details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Constructors"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h2 class="tsd-anchor-link" id="constructors-1">Constructors<a href="#constructors-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary>
+<section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="constructor"><span>constructor</span><a href="#constructor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="constructortauribridge"><span class="tsd-signature-keyword">new</span> <span class="tsd-kind-constructor-signature">TauriBridge</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <a href="" class="tsd-signature-type tsd-kind-class">TauriBridge</a><a href="#constructortauribridge" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<h4 class="tsd-returns-title">Returns <a href="" class="tsd-signature-type tsd-kind-class">TauriBridge</a></h4></div></li></ul></section></section></details>
+<details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Methods"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h2 class="tsd-anchor-link" id="methods-1">Methods<a href="#methods-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary>
+<section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="clearmodifiedcells"><code class="tsd-tag">Static</code><span>clear<wbr/>Modified<wbr/>Cells</span><a href="#clearmodifiedcells" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="clearmodifiedcells-1"><span class="tsd-kind-call-signature">clearModifiedCells</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">&gt;</span><a href="#clearmodifiedcells-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>未保存編集セルのリセット（保存完了時）</p>
+</div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:348</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="deletecol"><code class="tsd-tag">Static</code><span>delete<wbr/>Col</span><a href="#deletecol" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="deletecol-1"><span class="tsd-kind-call-signature">deleteCol</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">col</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><br/>    <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">deletedColValues</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">deletedHeader</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">}</span> <span class="tsd-signature-symbol">&amp;</span> <span class="tsd-signature-type">Partial</span><span class="tsd-signature-symbol">&lt;</span><br/>        <a href="../interfaces/types_csv.FileMetadata.html" class="tsd-signature-type tsd-kind-interface">FileMetadata</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">&gt;</span><a href="#deletecol-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>指定列を削除</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">col</span>: <span class="tsd-signature-type">number</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><br/>    <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">deletedColValues</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">deletedHeader</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">}</span> <span class="tsd-signature-symbol">&amp;</span> <span class="tsd-signature-type">Partial</span><span class="tsd-signature-symbol">&lt;</span><br/>        <a href="../interfaces/types_csv.FileMetadata.html" class="tsd-signature-type tsd-kind-interface">FileMetadata</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:451</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="deleterow"><code class="tsd-tag">Static</code><span>delete<wbr/>Row</span><a href="#deleterow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="deleterow-1"><span class="tsd-kind-call-signature">deleteRow</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">row</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">deletedData</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">}</span> <span class="tsd-signature-symbol">&amp;</span> <span class="tsd-signature-type">Partial</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/types_csv.FileMetadata.html" class="tsd-signature-type tsd-kind-interface">FileMetadata</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span><a href="#deleterow-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>指定行を削除</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">row</span>: <span class="tsd-signature-type">number</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">deletedData</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">}</span> <span class="tsd-signature-symbol">&amp;</span> <span class="tsd-signature-type">Partial</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/types_csv.FileMetadata.html" class="tsd-signature-type tsd-kind-interface">FileMetadata</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:401</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="duplicatecol"><code class="tsd-tag">Static</code><span>duplicate<wbr/>Col</span><a href="#duplicatecol" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="duplicatecol-1"><span class="tsd-kind-call-signature">duplicateCol</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">sourceCol</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">targetCol</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">headerName</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><br/>    <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">colValues</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">headerName</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">insertedCol</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span> <span class="tsd-signature-symbol">}</span> <span class="tsd-signature-symbol">&amp;</span> <span class="tsd-signature-type">Partial</span><span class="tsd-signature-symbol">&lt;</span><br/>        <a href="../interfaces/types_csv.FileMetadata.html" class="tsd-signature-type tsd-kind-interface">FileMetadata</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">&gt;</span><a href="#duplicatecol-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>指定列を複製</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">sourceCol</span>: <span class="tsd-signature-type">number</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">targetCol</span>: <span class="tsd-signature-type">number</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">headerName</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><br/>    <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">colValues</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">headerName</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">insertedCol</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span> <span class="tsd-signature-symbol">}</span> <span class="tsd-signature-symbol">&amp;</span> <span class="tsd-signature-type">Partial</span><span class="tsd-signature-symbol">&lt;</span><br/>        <a href="../interfaces/types_csv.FileMetadata.html" class="tsd-signature-type tsd-kind-interface">FileMetadata</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:467</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="duplicaterow"><code class="tsd-tag">Static</code><span>duplicate<wbr/>Row</span><a href="#duplicaterow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="duplicaterow-1"><span class="tsd-kind-call-signature">duplicateRow</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">sourceRow</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">targetRow</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><br/>    <span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">insertedRow</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">rowData</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">}</span> <span class="tsd-signature-symbol">&amp;</span> <span class="tsd-signature-type">Partial</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/types_csv.FileMetadata.html" class="tsd-signature-type tsd-kind-interface">FileMetadata</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">&gt;</span><a href="#duplicaterow-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>指定行を複製</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">sourceRow</span>: <span class="tsd-signature-type">number</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">targetRow</span>: <span class="tsd-signature-type">number</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">insertedRow</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">rowData</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">}</span> <span class="tsd-signature-symbol">&amp;</span> <span class="tsd-signature-type">Partial</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/types_csv.FileMetadata.html" class="tsd-signature-type tsd-kind-interface">FileMetadata</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:417</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="editcell"><code class="tsd-tag">Static</code><span>edit<wbr/>Cell</span><a href="#editcell" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="editcell-1"><span class="tsd-kind-call-signature">editCell</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">row</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">col</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">value</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">&gt;</span><a href="#editcell-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>セル直接編集（ゼロ落ち・型変換なしの生テキスト保持）</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">row</span>: <span class="tsd-signature-type">number</span></span></li>
+<li><span><span class="tsd-kind-parameter">col</span>: <span class="tsd-signature-type">number</span></span></li>
+<li><span><span class="tsd-kind-parameter">value</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:191</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="getcellvalue"><code class="tsd-tag">Static</code><span>get<wbr/>Cell<wbr/>Value</span><a href="#getcellvalue" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getcellvalue-1"><span class="tsd-kind-call-signature">getCellValue</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">row</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">col</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">&gt;</span><a href="#getcellvalue-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>単一セルの現在値を取得</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">row</span>: <span class="tsd-signature-type">number</span></span></li>
+<li><span><span class="tsd-kind-parameter">col</span>: <span class="tsd-signature-type">number</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:357</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="getcoldata"><code class="tsd-tag">Static</code><span>get<wbr/>Col<wbr/>Data</span><a href="#getcoldata" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getcoldata-1"><span class="tsd-kind-call-signature">getColData</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">col</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span><a href="#getcoldata-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>1列分の全セルデータを取得</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">col</span>: <span class="tsd-signature-type">number</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:379</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="getcurrenttext"><code class="tsd-tag">Static</code><span>get<wbr/>Current<wbr/>Text</span><a href="#getcurrenttext" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getcurrenttext-1"><span class="tsd-kind-call-signature">getCurrentText</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">lineEnding</span><span class="tsd-signature-symbol">?:</span> <a href="../types/types_csv.SupportedLineEnding.html" class="tsd-signature-type tsd-kind-type-alias">SupportedLineEnding</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">delimiter</span><span class="tsd-signature-symbol">?:</span> <a href="../types/types_csv.SupportedDelimiter.html" class="tsd-signature-type tsd-kind-type-alias">SupportedDelimiter</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">&gt;</span><a href="#getcurrenttext-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>現在の全CSVテキストを未保存編集を反映した状態で取得</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">lineEnding</span>: <a href="../types/types_csv.SupportedLineEnding.html" class="tsd-signature-type tsd-kind-type-alias">SupportedLineEnding</a></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">delimiter</span>: <a href="../types/types_csv.SupportedDelimiter.html" class="tsd-signature-type tsd-kind-type-alias">SupportedDelimiter</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:313</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="getrangetsv"><code class="tsd-tag">Static</code><span>get<wbr/>Range<wbr/>Tsv</span><a href="#getrangetsv" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getrangetsv-1"><span class="tsd-kind-call-signature">getRangeTsv</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">startRow</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">endRow</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">startCol</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">endCol</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">filterIndices</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">sortConfig</span><span class="tsd-signature-symbol">?:</span> <a href="../interfaces/types_csv.SortConfig.html" class="tsd-signature-type tsd-kind-interface">SortConfig</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">colCount</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">rowCount</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">tsvText</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">&gt;</span><a href="#getrangetsv-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">startRow</span>: <span class="tsd-signature-type">number</span></span></li>
+<li><span><span class="tsd-kind-parameter">endRow</span>: <span class="tsd-signature-type">number</span></span></li>
+<li><span><span class="tsd-kind-parameter">startCol</span>: <span class="tsd-signature-type">number</span></span></li>
+<li><span><span class="tsd-kind-parameter">endCol</span>: <span class="tsd-signature-type">number</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">filterIndices</span>: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">sortConfig</span>: <a href="../interfaces/types_csv.SortConfig.html" class="tsd-signature-type tsd-kind-interface">SortConfig</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">colCount</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">rowCount</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">tsvText</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:233</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="getrowdata"><code class="tsd-tag">Static</code><span>get<wbr/>Row<wbr/>Data</span><a href="#getrowdata" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getrowdata-1"><span class="tsd-kind-call-signature">getRowData</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">row</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span><a href="#getrowdata-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>1行分の全セルデータを取得</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">row</span>: <span class="tsd-signature-type">number</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:372</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="getslice"><code class="tsd-tag">Static</code><span>get<wbr/>Slice</span><a href="#getslice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getslice-1"><span class="tsd-kind-call-signature">getSlice</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">startRow</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">rowCount</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">filterIndices</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">sortConfig</span><span class="tsd-signature-symbol">?:</span> <a href="../interfaces/types_csv.SortConfig.html" class="tsd-signature-type tsd-kind-interface">SortConfig</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/types_csv.VirtualSliceResponse.html" class="tsd-signature-type tsd-kind-interface">VirtualSliceResponse</a><span class="tsd-signature-symbol">&gt;</span><a href="#getslice-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>画面内行のみのスライス要求 (30-50行)</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">startRow</span>: <span class="tsd-signature-type">number</span></span></li>
+<li><span><span class="tsd-kind-parameter">rowCount</span>: <span class="tsd-signature-type">number</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">filterIndices</span>: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">sortConfig</span>: <a href="../interfaces/types_csv.SortConfig.html" class="tsd-signature-type tsd-kind-interface">SortConfig</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/types_csv.VirtualSliceResponse.html" class="tsd-signature-type tsd-kind-interface">VirtualSliceResponse</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:146</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="insertcol"><code class="tsd-tag">Static</code><span>insert<wbr/>Col</span><a href="#insertcol" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="insertcol-1"><span class="tsd-kind-call-signature">insertCol</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">col</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">headerName</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Partial</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/types_csv.FileMetadata.html" class="tsd-signature-type tsd-kind-interface">FileMetadata</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span><a href="#insertcol-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>指定列位置に列を挿入</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">col</span>: <span class="tsd-signature-type">number</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">headerName</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Partial</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/types_csv.FileMetadata.html" class="tsd-signature-type tsd-kind-interface">FileMetadata</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:436</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="insertrow"><code class="tsd-tag">Static</code><span>insert<wbr/>Row</span><a href="#insertrow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="insertrow-1"><span class="tsd-kind-call-signature">insertRow</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">row</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">rowData</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Partial</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/types_csv.FileMetadata.html" class="tsd-signature-type tsd-kind-interface">FileMetadata</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span><a href="#insertrow-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>指定行位置に行を挿入</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">row</span>: <span class="tsd-signature-type">number</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">rowData</span>: <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Partial</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/types_csv.FileMetadata.html" class="tsd-signature-type tsd-kind-interface">FileMetadata</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:386</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="openfile"><code class="tsd-tag">Static</code><span>open<wbr/>File</span><a href="#openfile" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="openfile-1"><span class="tsd-kind-call-signature">openFile</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">file</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">File</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">customDelimiter</span><span class="tsd-signature-symbol">?:</span> <a href="../types/types_csv.SupportedDelimiter.html" class="tsd-signature-type tsd-kind-type-alias">SupportedDelimiter</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">forcedEncoding</span><span class="tsd-signature-symbol">?:</span> <a href="../types/types_csv.SupportedEncoding.html" class="tsd-signature-type tsd-kind-type-alias">SupportedEncoding</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/types_csv.FileMetadata.html" class="tsd-signature-type tsd-kind-interface">FileMetadata</a><span class="tsd-signature-symbol">&gt;</span><a href="#openfile-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>CSV/TSVファイルのオープン（ArrayBufferバイナリ読み込みによるShift_JIS/EUC-JP/UTF-8文字化け完全防止）</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">file</span>: <span class="tsd-signature-type">File</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">customDelimiter</span>: <a href="../types/types_csv.SupportedDelimiter.html" class="tsd-signature-type tsd-kind-type-alias">SupportedDelimiter</a></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">forcedEncoding</span>: <a href="../types/types_csv.SupportedEncoding.html" class="tsd-signature-type tsd-kind-type-alias">SupportedEncoding</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/types_csv.FileMetadata.html" class="tsd-signature-type tsd-kind-interface">FileMetadata</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:69</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="openfromtext"><code class="tsd-tag">Static</code><span>open<wbr/>From<wbr/>Text</span><a href="#openfromtext" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="openfromtext-1"><span class="tsd-kind-call-signature">openFromText</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">text</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">fileName</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">customDelimiter</span><span class="tsd-signature-symbol">?:</span> <a href="../types/types_csv.SupportedDelimiter.html" class="tsd-signature-type tsd-kind-type-alias">SupportedDelimiter</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/types_csv.FileMetadata.html" class="tsd-signature-type tsd-kind-interface">FileMetadata</a><span class="tsd-signature-symbol">&gt;</span><a href="#openfromtext-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>テキスト文字列からの直接オープン（サンプルデータ生成など）</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">text</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><span class="tsd-kind-parameter">fileName</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">customDelimiter</span>: <a href="../types/types_csv.SupportedDelimiter.html" class="tsd-signature-type tsd-kind-type-alias">SupportedDelimiter</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/types_csv.FileMetadata.html" class="tsd-signature-type tsd-kind-interface">FileMetadata</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:128</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="reloadwithencoding"><code class="tsd-tag">Static</code><span>reload<wbr/>With<wbr/>Encoding</span><a href="#reloadwithencoding" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="reloadwithencoding-1"><span class="tsd-kind-call-signature">reloadWithEncoding</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">encoding</span><span class="tsd-signature-symbol">:</span> <a href="../types/types_csv.SupportedEncoding.html" class="tsd-signature-type tsd-kind-type-alias">SupportedEncoding</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">customDelimiter</span><span class="tsd-signature-symbol">?:</span> <a href="../types/types_csv.SupportedDelimiter.html" class="tsd-signature-type tsd-kind-type-alias">SupportedDelimiter</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/types_csv.FileMetadata.html" class="tsd-signature-type tsd-kind-interface">FileMetadata</a><span class="tsd-signature-symbol">&gt;</span><a href="#reloadwithencoding-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>文字コード切り替え時の即時再デコード処理</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">encoding</span>: <a href="../types/types_csv.SupportedEncoding.html" class="tsd-signature-type tsd-kind-type-alias">SupportedEncoding</a></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">customDelimiter</span>: <a href="../types/types_csv.SupportedDelimiter.html" class="tsd-signature-type tsd-kind-type-alias">SupportedDelimiter</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/types_csv.FileMetadata.html" class="tsd-signature-type tsd-kind-interface">FileMetadata</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:103</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="savefile"><code class="tsd-tag">Static</code><span>save<wbr/>File</span><a href="#savefile" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="savefile-1"><span class="tsd-kind-call-signature">saveFile</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">fileName</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">encoding</span><span class="tsd-signature-symbol">:</span> <a href="../types/types_csv.SupportedEncoding.html" class="tsd-signature-type tsd-kind-type-alias">SupportedEncoding</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">lineEnding</span><span class="tsd-signature-symbol">:</span> <a href="../types/types_csv.SupportedLineEnding.html" class="tsd-signature-type tsd-kind-type-alias">SupportedLineEnding</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">delimiter</span><span class="tsd-signature-symbol">?:</span> <a href="../types/types_csv.SupportedDelimiter.html" class="tsd-signature-type tsd-kind-type-alias">SupportedDelimiter</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#savefile-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>ファイル保存（指定ファイル名・エンコーディング・改行コード・区切り文字）</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">fileName</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><span class="tsd-kind-parameter">encoding</span>: <a href="../types/types_csv.SupportedEncoding.html" class="tsd-signature-type tsd-kind-type-alias">SupportedEncoding</a></span></li>
+<li><span><span class="tsd-kind-parameter">lineEnding</span>: <a href="../types/types_csv.SupportedLineEnding.html" class="tsd-signature-type tsd-kind-type-alias">SupportedLineEnding</a></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">delimiter</span>: <a href="../types/types_csv.SupportedDelimiter.html" class="tsd-signature-type tsd-kind-type-alias">SupportedDelimiter</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:510</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="search"><code class="tsd-tag">Static</code><span>search</span><a href="#search" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="search-1"><span class="tsd-kind-call-signature">search</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">query</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">caseSensitive</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">useRegex</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">columnFilter</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">error</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">matches</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/types_csv.SearchMatch.html" class="tsd-signature-type tsd-kind-interface">SearchMatch</a><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">&gt;</span><a href="#search-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>高速文字列検索</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">query</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><span class="tsd-kind-parameter">caseSensitive</span>: <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> = false</span></span></li>
+<li><span><span class="tsd-kind-parameter">useRegex</span>: <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> = false</span></span></li>
+<li><span><span class="tsd-kind-parameter">columnFilter</span>: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> = null</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">{</span> <span class="tsd-kind-property">error</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span> <span class="tsd-kind-property">matches</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/types_csv.SearchMatch.html" class="tsd-signature-type tsd-kind-interface">SearchMatch</a><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:272</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="sethasheader"><code class="tsd-tag">Static</code><span>set<wbr/>Has<wbr/>Header</span><a href="#sethasheader" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="sethasheader-1"><span class="tsd-kind-call-signature">setHasHeader</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">hasHeader</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><br/>    <span class="tsd-signature-symbol">{</span><br/>        <span class="tsd-kind-property">hasHeader</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">headers</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">totalCols</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">totalRows</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">&gt;</span><a href="#sethasheader-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">hasHeader</span>: <span class="tsd-signature-type">boolean</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><br/>    <span class="tsd-signature-symbol">{</span><br/>        <span class="tsd-kind-property">hasHeader</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">headers</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">totalCols</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">totalRows</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:213</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="splitfile"><code class="tsd-tag">Static</code><span>split<wbr/>File</span><a href="#splitfile" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="splitfile-1"><span class="tsd-kind-call-signature">splitFile</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">config</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{</span><br/>        <span class="tsd-kind-property">chunkRows</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">encoding</span><span class="tsd-signature-symbol">?:</span> <a href="../types/types_csv.SupportedEncoding.html" class="tsd-signature-type tsd-kind-type-alias">SupportedEncoding</a><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">includeHeader</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">lineEnding</span><span class="tsd-signature-symbol">?:</span> <a href="../types/types_csv.SupportedLineEnding.html" class="tsd-signature-type tsd-kind-type-alias">SupportedLineEnding</a><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">prefix</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><br/>    <span class="tsd-signature-symbol">{</span><br/>        <span class="tsd-kind-property">chunks</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{</span><br/>            <span class="tsd-kind-property">bytes</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Uint8Array</span><span class="tsd-signature-symbol">;</span><br/>            <span class="tsd-kind-property">fileName</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>            <span class="tsd-kind-property">rowCount</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>            <span class="tsd-kind-property">text</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">totalChunks</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">totalRows</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">&gt;</span><a href="#splitfile-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>行数指定による高速ファイル分割エクスポート</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">config</span>: <span class="tsd-signature-symbol">{</span><br/>    <span class="tsd-kind-property">chunkRows</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-property">encoding</span><span class="tsd-signature-symbol">?:</span> <a href="../types/types_csv.SupportedEncoding.html" class="tsd-signature-type tsd-kind-type-alias">SupportedEncoding</a><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-property">includeHeader</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-property">lineEnding</span><span class="tsd-signature-symbol">?:</span> <a href="../types/types_csv.SupportedLineEnding.html" class="tsd-signature-type tsd-kind-type-alias">SupportedLineEnding</a><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-property">prefix</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><br/>    <span class="tsd-signature-symbol">{</span><br/>        <span class="tsd-kind-property">chunks</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{</span><br/>            <span class="tsd-kind-property">bytes</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Uint8Array</span><span class="tsd-signature-symbol">;</span><br/>            <span class="tsd-kind-property">fileName</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>            <span class="tsd-kind-property">rowCount</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>            <span class="tsd-kind-property">text</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">totalChunks</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>        <span class="tsd-kind-property">totalRows</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-signature-symbol">}</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:487</li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="updatefromtext"><code class="tsd-tag">Static</code><span>update<wbr/>From<wbr/>Text</span><a href="#updatefromtext" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="updatefromtext-1"><span class="tsd-kind-call-signature">updateFromText</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">text</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">customDelimiter</span><span class="tsd-signature-symbol">?:</span> <a href="../types/types_csv.SupportedDelimiter.html" class="tsd-signature-type tsd-kind-type-alias">SupportedDelimiter</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/types_csv.FileMetadata.html" class="tsd-signature-type tsd-kind-interface">FileMetadata</a><span class="tsd-signature-symbol">&gt;</span><a href="#updatefromtext-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>テキスト表示モードでの直接編集内容をテーブルエンジンへ再適用</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">text</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">customDelimiter</span>: <a href="../types/types_csv.SupportedDelimiter.html" class="tsd-signature-type tsd-kind-type-alias">SupportedDelimiter</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/types_csv.FileMetadata.html" class="tsd-signature-type tsd-kind-interface">FileMetadata</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in services/tauriBridge.ts:335</li></ul></aside></div></li></ul></section></section></details></div>
+<div class="col-sidebar">
+<div class="page-menu">
+<div class="tsd-navigation settings">
+<details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>Settings</h3></summary>
+<div class="tsd-accordion-details">
+<div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span>
+<ul id="tsd-filter-options">
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div>
+<div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div>
+<details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>On This Page</h3></summary>
+<div class="tsd-accordion-details">
+<details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Constructors"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Constructors</summary>
+<div><a href="#constructor"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Constructor"><use href="../assets/icons.svg#icon-512"></use></svg><span>constructor</span></a></div></details>
+<details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Methods"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Methods</summary>
+<div><a href="#clearmodifiedcells"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>clear<wbr/>Modified<wbr/>Cells</span></a><a href="#deletecol"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>delete<wbr/>Col</span></a><a href="#deleterow"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>delete<wbr/>Row</span></a><a href="#duplicatecol"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>duplicate<wbr/>Col</span></a><a href="#duplicaterow"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>duplicate<wbr/>Row</span></a><a href="#editcell"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>edit<wbr/>Cell</span></a><a href="#getcellvalue"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Cell<wbr/>Value</span></a><a href="#getcoldata"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Col<wbr/>Data</span></a><a href="#getcurrenttext"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Current<wbr/>Text</span></a><a href="#getrangetsv"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Range<wbr/>Tsv</span></a><a href="#getrowdata"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Row<wbr/>Data</span></a><a href="#getslice"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Slice</span></a><a href="#insertcol"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>insert<wbr/>Col</span></a><a href="#insertrow"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>insert<wbr/>Row</span></a><a href="#openfile"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>open<wbr/>File</span></a><a href="#openfromtext"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>open<wbr/>From<wbr/>Text</span></a><a href="#reloadwithencoding"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>reload<wbr/>With<wbr/>Encoding</span></a><a href="#savefile"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>save<wbr/>File</span></a><a href="#search"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>search</span></a><a href="#sethasheader"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>set<wbr/>Has<wbr/>Header</span></a><a href="#splitfile"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>split<wbr/>File</span></a><a href="#updatefromtext"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>update<wbr/>From<wbr/>Text</span></a></div></details></div></details></div>
+<div class="site-menu">
+<nav class="tsd-navigation"><a href="../modules.html">QuCSView API Documentation - v0.0.0</a>
+<ul class="tsd-small-nested-navigation" id="tsd-nav-container">
+<li>Loading...</li></ul></nav></div></div></div><footer>
+<p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer>
+<div class="overlay"></div></body></html>

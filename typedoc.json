@@ -1,0 +1,13 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "src/services/tauriBridge.ts",
+    "src/services/csvWorker.ts",
+    "src/types/csv.ts",
+    "src/utils/csvParser.ts"
+  ],
+  "out": "docs/api",
+  "name": "QuCSView API Documentation",
+  "readme": "README.md",
+  "includeVersion": true
+}

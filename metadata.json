@@ -1,0 +1,6 @@
+{
+  "name": "QuCSView",
+  "description": "High-speed CSV/TSV preview & cell editor desktop app with zero Excel-mutation",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

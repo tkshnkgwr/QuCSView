@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="grid" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background Card -->
+  <rect x="32" y="32" width="448" height="448" rx="96" fill="url(#bg)" stroke="#334155" stroke-width="8"/>
+
+  <!-- Table Grid Background -->
+  <rect x="80" y="80" width="352" height="352" rx="24" fill="#1e293b" fill-opacity="0.8" stroke="#475569" stroke-width="4"/>
+
+  <!-- Table Header Bar -->
+  <path d="M80 104 C80 90.7 90.7 80 104 80 L408 80 C421.3 80 432 90.7 432 104 L432 144 L80 144 Z" fill="url(#accent)"/>
+
+  <!-- Header Column Dividers -->
+  <line x1="184" y1="80" x2="184" y2="432" stroke="#475569" stroke-width="4"/>
+  <line x1="304" y1="80" x2="304" y2="432" stroke="#475569" stroke-width="4"/>
+
+  <!-- Row Dividers -->
+  <line x1="80" y1="216" x2="432" y2="216" stroke="#334155" stroke-width="4"/>
+  <line x1="80" y1="288" x2="432" y2="288" stroke="#334155" stroke-width="4"/>
+  <line x1="80" y1="360" x2="432" y2="360" stroke="#334155" stroke-width="4"/>
+
+  <!-- Active Cell Highlight -->
+  <rect x="188" y="220" width="112" height="64" rx="8" fill="url(#grid)" fill-opacity="0.3" stroke="#10b981" stroke-width="4"/>
+
+  <!-- CSV Text "Q" Badge -->
+  <circle cx="360" cy="360" r="64" fill="url(#accent)" stroke="#ffffff" stroke-width="6"/>
+  <text x="360" y="385" font-family="Segoe UI, -apple-system, sans-serif" font-weight="900" font-size="72" fill="#ffffff" text-anchor="middle">Q</text>
+</svg>
