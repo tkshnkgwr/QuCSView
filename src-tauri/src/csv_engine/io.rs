@@ -108,6 +108,7 @@ impl CsvEngine {
 
         // ヘッダー行のデコードとパース
         let mut headers = Vec::new();
+        let mut raw_headers = Vec::new();
         let mut total_cols = 0;
         if !self.line_offsets.is_empty() {
             let header_row_slice = self.get_decoded_line_at(0)?;
@@ -120,6 +121,7 @@ impl CsvEngine {
                 let record = result?;
                 total_cols = record.len();
                 for (idx, field) in record.iter().enumerate() {
+                    raw_headers.push(field.to_string()); // 元の値（空文字列も保持）
                     let field_name = if field.trim().is_empty() {
                         format!("Col {}", idx + 1)
                     } else {
@@ -136,6 +138,7 @@ impl CsvEngine {
             self.line_offsets.len() - 1
         };
         self.headers = headers.clone();
+        self.raw_headers = raw_headers;
         self.total_rows = total_rows;
         self.total_cols = total_cols;
         self.has_header = true;
@@ -205,12 +208,41 @@ impl CsvEngine {
             SupportedLineEnding::LF => "\n",
         };
 
+        // mmap ファイルがある場合は元ファイルの1行目をそのまま使う（最も正確）
+        // in-memory の場合は raw_headers（置換前の元の値）を使う
         let limit = max_lines.unwrap_or(self.total_rows).min(self.total_rows);
         let mut output = String::new();
 
-        if self.has_header && !self.headers.is_empty() {
-            output.push_str(&self.headers.join(&delim_char.to_string()));
-            output.push_str(le);
+        if self.has_header {
+            if self.mmap.is_some() && !self.line_offsets.is_empty() {
+                // ファイルから直接読む（空文字列も正確に保持）
+                if let Ok(first_line) = self.get_decoded_line_at(0) {
+                    output.push_str(&first_line);
+                    output.push_str(le);
+                }
+            } else if !self.raw_headers.is_empty() {
+                // in-memory: raw_headers（空文字列保持）を使う
+                let escape_cell = |s: &str| -> String {
+                    if s.contains(delim_char) || s.contains('"') || s.contains('\n') {
+                        format!("\"{}\"", s.replace('"', "\"\""))
+                    } else {
+                        s.to_string()
+                    }
+                };
+                output.push_str(
+                    &self
+                        .raw_headers
+                        .iter()
+                        .map(|h| escape_cell(h))
+                        .collect::<Vec<_>>()
+                        .join(&delim_char.to_string()),
+                );
+                output.push_str(le);
+            } else if !self.headers.is_empty() {
+                // フォールバック: 表示用ヘッダー（Col N を含む可能性あり）
+                output.push_str(&self.headers.join(&delim_char.to_string()));
+                output.push_str(le);
+            }
         }
 
         for row_idx in 0..limit {
@@ -251,17 +283,31 @@ impl CsvEngine {
             all_rows.push(row);
         }
 
-        let (headers, data_rows) = if self.has_header && !all_rows.is_empty() {
-            let hdr = all_rows.remove(0);
-            (hdr, all_rows)
+        let (headers, raw_headers, data_rows) = if self.has_header && !all_rows.is_empty() {
+            let first_row = all_rows.remove(0);
+            let raw = first_row.clone();
+            let display: Vec<String> = first_row
+                .into_iter()
+                .enumerate()
+                .map(|(i, f)| {
+                    if f.trim().is_empty() {
+                        format!("Col {}", i + 1)
+                    } else {
+                        f
+                    }
+                })
+                .collect();
+            (display, raw, all_rows)
         } else {
             let hdr: Vec<String> = (1..=max_cols.max(1)).map(|i| i.to_string()).collect();
-            (hdr, all_rows)
+            let raw = vec![String::new(); max_cols.max(1)];
+            (hdr, raw, all_rows)
         };
 
         self.total_rows = data_rows.len();
         self.total_cols = max_cols.max(headers.len());
         self.headers = headers;
+        self.raw_headers = raw_headers;
         self.in_memory_rows = Some(data_rows);
         self.modified_cells.clear();
 

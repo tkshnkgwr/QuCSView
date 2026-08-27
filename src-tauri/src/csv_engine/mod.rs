@@ -37,8 +37,10 @@ pub struct CsvEngine {
     pub encoding: SupportedEncoding,
     /// 改行コード
     pub line_ending: SupportedLineEnding,
-    /// ヘッダー文字列配列
+    /// 表示用ヘッダー文字列配列（空フィールドは "Col N" に置換済み）
     pub headers: Vec<String>,
+    /// 元の生ヘッダー文字列配列（テキスト再構築時に使用、空フィールドは空文字列のまま保持）
+    pub raw_headers: Vec<String>,
     /// 各行の開始バイト位置オフセット
     pub line_offsets: Vec<usize>,
     /// メモリマップハンドル
@@ -70,6 +72,7 @@ impl CsvEngine {
             encoding: SupportedEncoding::Utf8,
             line_ending: SupportedLineEnding::LF,
             headers: Vec::new(),
+            raw_headers: Vec::new(),
             line_offsets: Vec::new(),
             mmap: None,
             in_memory_rows: None,

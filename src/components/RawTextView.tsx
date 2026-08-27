@@ -1,9 +1,8 @@
-// UPDATE 2026-08-26: [テキスト表示コンポーネント新規作成]
-// なぜ: CSV表プレビューと相互に切り替え可能な「テキスト表示（生CSV/TSVテキスト）」モードを提供し、
-// 行番号ガター、シンタックス折り返し切替、全文コピー、検索キーワードハイライト、直接テキスト編集および即時テーブル同期を可能にするため。
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { FileMetadata, SupportedEncoding, SupportedLineEnding, SupportedDelimiter } from '../types/csv';
-import { Copy, Check, WrapText, FileText, Download, RotateCcw } from 'lucide-react';
+// UPDATE 2026-08-27: [テキスト表示モードのリアルタイム検索ハイライト＆ナビゲーション]
+// なぜ: テキスト表示モードでも検索キーワードのハイライト表示（通常一致/現在選択一致）、正規表現/大文字小文字対応、および一致箇所への自動スクロールと選択フォーカスを提供するため。
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { FileMetadata } from '../types/csv';
+import { Copy, Check, WrapText, FileText } from 'lucide-react';
 
 interface RawTextViewProps {
   rawText: string;
@@ -11,8 +10,15 @@ interface RawTextViewProps {
   searchQuery?: string;
   searchCaseSensitive?: boolean;
   searchUseRegex?: boolean;
+  currentMatchIndex?: number;
   onTextChange: (newText: string) => void;
   onSaveFile: () => void;
+}
+
+interface TextMatchRange {
+  start: number;
+  end: number;
+  line: number;
 }
 
 export const RawTextView: React.FC<RawTextViewProps> = ({
@@ -21,20 +27,21 @@ export const RawTextView: React.FC<RawTextViewProps> = ({
   searchQuery = '',
   searchCaseSensitive = false,
   searchUseRegex = false,
+  currentMatchIndex = 0,
   onTextChange,
-  onSaveFile,
 }) => {
   const [localText, setLocalText] = useState(rawText);
   const [isCopied, setIsCopied] = useState(false);
   const [wordWrap, setWordWrap] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setLocalText(rawText);
   }, [rawText]);
 
-  // 行数・バイト数の計算
+  // 行数・文字数・バイト数の計算
   const lines = useMemo(() => {
     return localText.split(/\r?\n/);
   }, [localText]);
@@ -45,12 +52,95 @@ export const RawTextView: React.FC<RawTextViewProps> = ({
     return new TextEncoder().encode(localText).length;
   }, [localText]);
 
-  // スクロール同期
+  // テキスト内の全検索マッチ位置を計算
+  const textMatches = useMemo<TextMatchRange[]>(() => {
+    if (!searchQuery.trim() || !localText) return [];
+
+    const matches: TextMatchRange[] = [];
+    try {
+      let regex: RegExp;
+      if (searchUseRegex) {
+        regex = new RegExp(searchQuery, searchCaseSensitive ? 'g' : 'gi');
+      } else {
+        const escaped = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        regex = new RegExp(escaped, searchCaseSensitive ? 'g' : 'gi');
+      }
+
+      let match: RegExpExecArray | null;
+      let currentLine = 0;
+      let lineStartOffset = 0;
+
+      while ((match = regex.exec(localText)) !== null) {
+        if (match[0].length === 0) {
+          regex.lastIndex++;
+          continue;
+        }
+
+        const matchStart = match.index;
+        const matchEnd = matchStart + match[0].length;
+
+        // 行番号を算出
+        while (
+          currentLine < lines.length &&
+          lineStartOffset + lines[currentLine].length < matchStart
+        ) {
+          lineStartOffset += lines[currentLine].length + 1; // +1 for \n
+          currentLine++;
+        }
+
+        matches.push({
+          start: matchStart,
+          end: matchEnd,
+          line: currentLine,
+        });
+
+        // 制限 (UIフリーズ防止)
+        if (matches.length >= 5000) break;
+      }
+    } catch {
+      return [];
+    }
+
+    return matches;
+  }, [localText, searchQuery, searchCaseSensitive, searchUseRegex, lines]);
+
+  // スクロール同期 (textarea -> 背景ハイライト & 行番号ガター)
   const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    const { scrollTop, scrollLeft } = e.currentTarget;
+    if (backdropRef.current) {
+      backdropRef.current.scrollTop = scrollTop;
+      backdropRef.current.scrollLeft = scrollLeft;
+    }
     if (lineNumbersRef.current) {
-      lineNumbersRef.current.scrollTop = e.currentTarget.scrollTop;
+      lineNumbersRef.current.scrollTop = scrollTop;
     }
   };
+
+  // 検索ヒット位置への自動スクロール＆フォーカス
+  useEffect(() => {
+    if (textMatches.length === 0 || !textareaRef.current) return;
+
+    const safeIdx = Math.min(Math.max(0, currentMatchIndex), textMatches.length - 1);
+    const targetMatch = textMatches[safeIdx];
+    if (!targetMatch) return;
+
+    const textarea = textareaRef.current;
+    const lineHeight = 20; // leading-5 = 20px
+    const targetScrollTop = Math.max(0, targetMatch.line * lineHeight - 100);
+
+    textarea.scrollTop = targetScrollTop;
+    if (backdropRef.current) {
+      backdropRef.current.scrollTop = targetScrollTop;
+    }
+    if (lineNumbersRef.current) {
+      lineNumbersRef.current.scrollTop = targetScrollTop;
+    }
+
+    // 選択範囲をセット
+    try {
+      textarea.setSelectionRange(targetMatch.start, targetMatch.end);
+    } catch (_) {}
+  }, [currentMatchIndex, textMatches]);
 
   const handleCopyAll = async () => {
     try {
@@ -68,9 +158,48 @@ export const RawTextView: React.FC<RawTextViewProps> = ({
     onTextChange(val);
   };
 
+  // 背景ハイライトHTMLの生成
+  const highlightedContent = useMemo(() => {
+    if (!searchQuery.trim() || textMatches.length === 0) {
+      return localText;
+    }
+
+    const elements: React.ReactNode[] = [];
+    let lastIndex = 0;
+
+    textMatches.forEach((m, idx) => {
+      // マッチ前の通常テキスト
+      if (m.start > lastIndex) {
+        elements.push(localText.slice(lastIndex, m.start));
+      }
+
+      const matchText = localText.slice(m.start, m.end);
+      const isCurrent = idx === currentMatchIndex % Math.max(1, textMatches.length);
+
+      elements.push(
+        <mark
+          key={`mark-${m.start}-${idx}`}
+          className={`rounded-2xs px-0 py-0.5 font-mono ${
+            isCurrent
+              ? 'bg-amber-400 dark:bg-amber-500 text-gray-950 font-bold ring-2 ring-amber-600 dark:ring-amber-300'
+              : 'bg-yellow-200 dark:bg-yellow-600/70 text-gray-900 dark:text-gray-100'
+          }`}
+        >
+          {matchText}
+        </mark>
+      );
+
+      lastIndex = m.end;
+    });
+
+    if (lastIndex < localText.length) {
+      elements.push(localText.slice(lastIndex));
+    }
+
+    return elements;
+  }, [localText, searchQuery, textMatches, currentMatchIndex]);
+
   return (
-// UPDATE 2026-08-26: [ライト/ダーク両対応テキスト表示]
-// なぜ: 無効な light: 構文を除去し、生テキスト表示画面のライトモード（白基調・高コントラスト）とダークモードを両立するため
     <div
       id="qu-raw-text-view"
       className="flex-1 flex flex-col bg-white dark:bg-[#0F1115] text-gray-900 dark:text-gray-100 font-mono overflow-hidden select-text"
@@ -86,17 +215,26 @@ export const RawTextView: React.FC<RawTextViewProps> = ({
             <span>テキスト表示 (Raw Text Mode)</span>
           </div>
           <span className="text-gray-400 dark:text-gray-600">|</span>
-          <span className="tabular-nums">
+          <span className="tabular-nums font-semibold text-gray-700 dark:text-gray-300">
             {lineCount.toLocaleString()} 行
           </span>
           <span>•</span>
-          <span className="tabular-nums">
+          <span className="tabular-nums text-gray-700 dark:text-gray-300">
             {charCount.toLocaleString()} 文字
           </span>
           <span>•</span>
-          <span className="tabular-nums">
+          <span className="tabular-nums text-gray-700 dark:text-gray-300">
             {(byteCount / 1024).toFixed(1)} KB
           </span>
+          {searchQuery && (
+            <>
+              <span className="text-gray-400 dark:text-gray-600">|</span>
+              <span className="text-blue-600 dark:text-blue-400 font-bold">
+                🔍 一致: {textMatches.length.toLocaleString()} 件
+                {textMatches.length > 0 && ` (${(currentMatchIndex % textMatches.length) + 1}/${textMatches.length})`}
+              </span>
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -139,7 +277,7 @@ export const RawTextView: React.FC<RawTextViewProps> = ({
         </div>
       </div>
 
-      {/* エディタ本体 (行番号ガター + 高速テキストエリア) */}
+      {/* エディタ本体 (行番号ガター + リアルタイムハイライトオーバーレイ + 高速テキストエリア) */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* 行番号ガター */}
         <div
@@ -154,20 +292,34 @@ export const RawTextView: React.FC<RawTextViewProps> = ({
           ))}
         </div>
 
-        {/* テキスト入力/閲覧エリア */}
-        <textarea
-          id="textarea-raw-csv"
-          ref={textareaRef}
-          value={localText}
-          onChange={handleChange}
-          onScroll={handleScroll}
-          spellCheck={false}
-          wrap={wordWrap ? 'soft' : 'off'}
-          className={`flex-1 bg-white dark:bg-[#0F1115] text-gray-900 dark:text-gray-100 p-2 text-xs font-mono focus:outline-none resize-none leading-5 ${
-            wordWrap ? 'whitespace-pre-wrap' : 'whitespace-pre'
-          }`}
-          placeholder="CSV/TSVテキストがここに表示されます..."
-        />
+        {/* テキストエディタ＆ハイライトコンテナ */}
+        <div className="flex-1 relative overflow-hidden bg-white dark:bg-[#0F1115]">
+          {/* 背景ハイライトレイヤー */}
+          <div
+            ref={backdropRef}
+            aria-hidden="true"
+            className={`absolute inset-0 p-2 text-xs font-mono leading-5 overflow-hidden pointer-events-none select-none text-transparent ${
+              wordWrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre'
+            }`}
+          >
+            {highlightedContent}
+          </div>
+
+          {/* 前面テキストエリア */}
+          <textarea
+            id="textarea-raw-csv"
+            ref={textareaRef}
+            value={localText}
+            onChange={handleChange}
+            onScroll={handleScroll}
+            spellCheck={false}
+            wrap={wordWrap ? 'soft' : 'off'}
+            className={`absolute inset-0 w-full h-full bg-transparent text-gray-900 dark:text-gray-100 p-2 text-xs font-mono focus:outline-none resize-none leading-5 caret-blue-600 dark:caret-blue-400 ${
+              wordWrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre'
+            }`}
+            placeholder="CSV/TSVテキストがここに表示されます..."
+          />
+        </div>
       </div>
     </div>
   );

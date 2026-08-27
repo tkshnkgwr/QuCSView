@@ -22,7 +22,7 @@ interface VirtualTableProps {
   currentSearchMatch: SearchMatch | null;
   sortConfig: SortConfig;
   onSortColumn: (colIndex: number) => void;
-  onCellEdited: (row: number, col: number, value: string) => void;
+  onCellEdited: (row: number, col: number, value: string, prevValue?: string) => void;
   onBatchCellEdited?: (changes: Array<{ row: number; col: number; prevValue: string; newValue: string }>) => void;
   onSelectionStatsChange?: (stats: SelectionStats | null) => void;
   modifiedCells?: Set<string>;
@@ -176,6 +176,10 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
 
   // カラム幅リサイズ用
   const resizingColRef = useRef<{ index: number; startX: number; startWidth: number } | null>(null);
+
+  // 検索ヒット位置・外部ジャンプの重複発火防止用（手動スクロール中に先頭へ引き戻されるのを完全防止）
+  const lastSearchMatchRef = useRef<{ row: number; col: number } | null>(null);
+  const lastJumpRowRef = useRef<number | null>(null);
 
   // ドラッグ選択終了の監視
   useEffect(() => {
@@ -485,10 +489,12 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
         console.error('Failed to fetch slice:', err);
       }
     },
-    []
+    // hasHeader, metadata.totalRows, metadata.headers を依存に含めることで
+    // ヘッダー切替・行数変化時に fetchSlice が再生成され、useEffect の再実行が確実に起きる
+    [hasHeader, metadata.totalRows, metadata.headers]
   );
 
-  // スライス取得のトリガー
+  // スライス取得のトリガー (スクロール、行数変化、ヘッダー変化、ヘッダー有無切替、検索絞り込み、ソート時のみ再取得)
   useEffect(() => {
     const activeFilter = filterMode && filterIndices ? filterIndices : null;
     fetchSlice(startRow, rowCount, activeFilter, sortConfig);
@@ -496,9 +502,10 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
     startRow,
     rowCount,
     fetchSlice,
-    metadata.isDirty,
     metadata.totalRows,
     metadata.headers,
+    hasHeader,
+    metadata.hasHeader,
     filterMode,
     filterIndices,
     sortConfig,
@@ -520,9 +527,12 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
     setScrollTop(e.currentTarget.scrollTop);
   };
 
-  // 外部からのジャンプ
+  // 外部からのジャンプ (行ジャンプ等)
   useEffect(() => {
     if (jumpToRowTrigger !== null && containerRef.current) {
+      if (lastJumpRowRef.current === jumpToRowTrigger) return;
+      lastJumpRowRef.current = jumpToRowTrigger;
+
       let targetVirtualIndex = jumpToRowTrigger;
       if (filterMode && filterIndices) {
         const foundIdx = filterIndices.indexOf(jumpToRowTrigger);
@@ -540,66 +550,72 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
         endRow: targetVirtualIndex,
         endCol: metadata.totalCols - 1,
       });
+    } else if (jumpToRowTrigger === null) {
+      lastJumpRowRef.current = null;
     }
   }, [jumpToRowTrigger, containerHeight, filterMode, filterIndices, setActiveCell, metadata.totalCols]);
 
-  // 検索ヒット位置への自動スクロール＆アクティブセル同期
+  // 検索ヒット位置への自動スクロール＆アクティブセル同期 (マッチ座標が実際に変更された時のみスクロール)
   useEffect(() => {
-    if (currentSearchMatch && containerRef.current) {
-      const { row: targetPhysicalRow, col: targetCol } = currentSearchMatch;
-      let targetVirtualRow = targetPhysicalRow;
-      if (filterMode && filterIndices) {
-        const foundIdx = filterIndices.indexOf(targetPhysicalRow);
-        if (foundIdx !== -1) {
-          targetVirtualRow = foundIdx;
-        } else {
-          return;
-        }
-      }
+    if (!currentSearchMatch || !containerRef.current) {
+      lastSearchMatchRef.current = null;
+      return;
+    }
 
-      const rowTop = targetVirtualRow * ROW_HEIGHT;
-      const currentScroll = containerRef.current.scrollTop;
-      const isVisible =
-        rowTop >= currentScroll &&
-        rowTop + ROW_HEIGHT <= currentScroll + containerHeight;
+    const { row: targetPhysicalRow, col: targetCol } = currentSearchMatch;
 
-      if (!isVisible) {
-        containerRef.current.scrollTop = Math.max(
-          0,
-          rowTop - Math.floor(containerHeight / 2)
-        );
-      }
+    // 前回のマッチと同じ座標であれば、ユーザーの手動スクロール中なので自動スクロールしない！
+    if (
+      lastSearchMatchRef.current &&
+      lastSearchMatchRef.current.row === targetPhysicalRow &&
+      lastSearchMatchRef.current.col === targetCol
+    ) {
+      return;
+    }
+    lastSearchMatchRef.current = { row: targetPhysicalRow, col: targetCol };
 
-      const targetCoord = {
-        row: filterMode ? targetVirtualRow : targetPhysicalRow,
-        col: targetCol,
-      };
-      setActiveCell(targetCoord);
-      setSelectionAnchor(targetCoord);
-      setSelectedRange({
-        startRow: targetCoord.row,
-        startCol: targetCoord.col,
-        endRow: targetCoord.row,
-        endCol: targetCoord.col,
-      });
-
-      if (onActiveCellChange) {
-        const rowInSlice = targetVirtualRow - sliceStartRow;
-        if (visibleRows[rowInSlice] && visibleRows[rowInSlice][targetCol] !== undefined) {
-          onActiveCellChange(targetCoord, visibleRows[rowInSlice][targetCol]);
-        }
+    let targetVirtualRow = targetPhysicalRow;
+    if (filterMode && filterIndices) {
+      const foundIdx = filterIndices.indexOf(targetPhysicalRow);
+      if (foundIdx !== -1) {
+        targetVirtualRow = foundIdx;
+      } else {
+        return;
       }
     }
-  }, [
-    currentSearchMatch,
-    containerHeight,
-    filterMode,
-    filterIndices,
-    setActiveCell,
-    onActiveCellChange,
-    sliceStartRow,
-    visibleRows,
-  ]);
+
+    const rowTop = targetVirtualRow * ROW_HEIGHT;
+    const currentScroll = containerRef.current.scrollTop;
+    const isVisible =
+      rowTop >= currentScroll &&
+      rowTop + ROW_HEIGHT <= currentScroll + containerHeight;
+
+    if (!isVisible) {
+      const newScroll = Math.max(0, rowTop - Math.floor(containerHeight / 2));
+      containerRef.current.scrollTop = newScroll;
+      setScrollTop(newScroll);
+    }
+
+    const targetCoord = {
+      row: filterMode ? targetVirtualRow : targetPhysicalRow,
+      col: targetCol,
+    };
+    setActiveCell(targetCoord);
+    setSelectionAnchor(targetCoord);
+    setSelectedRange({
+      startRow: targetCoord.row,
+      startCol: targetCoord.col,
+      endRow: targetCoord.row,
+      endCol: targetCoord.col,
+    });
+
+    if (onActiveCellChange) {
+      const rowInSlice = targetVirtualRow - sliceStartRow;
+      if (visibleRows[rowInSlice] && visibleRows[rowInSlice][targetCol] !== undefined) {
+        onActiveCellChange(targetCoord, visibleRows[rowInSlice][targetCol]);
+      }
+    }
+  }, [currentSearchMatch, containerHeight, filterMode, filterIndices, setActiveCell, sliceStartRow, visibleRows, onActiveCellChange]);
 
   // セル編集開始
   const startEditing = (row: number, col: number, sliceIdx: number, currentValue: string) => {
@@ -631,7 +647,7 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
         return next;
       });
 
-      onCellEdited(row, col, valToSave);
+      onCellEdited(row, col, valToSave, initialValue);
 
       if (onActiveCellChange && activeCell) {
         onActiveCellChange(activeCell, valToSave);
@@ -995,7 +1011,7 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
 
             return (
               <div
-                key={virtualRowIdx}
+                key={`${hasHeader ? 'hdr' : 'nohdr'}-${virtualRowIdx}`}
                 id={`row-${virtualRowIdx}`}
                 style={{ height: `${ROW_HEIGHT}px` }}
                 className={`flex border-b transition-colors ${

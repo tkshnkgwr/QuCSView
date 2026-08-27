@@ -28,15 +28,18 @@ pub enum SupportedLineEnding {
 
 /// ソート設定構造体
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SortConfig {
-    /// ソート対象のカラムインデックス (0-indexed)
-    pub column_index: usize,
+    /// ソート対象のカラムインデックス (0-indexed, 負数はソートなし)
+    #[serde(alias = "column", alias = "columnIndex", alias = "column_index")]
+    pub column: isize,
     /// ソート方向 ("asc" または "desc")
     pub direction: String,
 }
 
 /// CSVファイルのメタデータ情報
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FileMetadata {
     /// ファイル名（パスを除く）
     pub file_name: String,
@@ -66,6 +69,7 @@ pub struct FileMetadata {
 
 /// 単一の検索一致結果
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SearchResult {
     /// 一致したセルの行インデックス (0-indexed)
     pub row: usize,
@@ -77,6 +81,7 @@ pub struct SearchResult {
 
 /// 全文・正規表現検索のレスポンス
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SearchResponse {
     /// 一致したセル位置と値のリスト
     pub matches: Vec<SearchResult>,
@@ -88,6 +93,7 @@ pub struct SearchResponse {
 
 /// 仮想スクロール表示用のスライスレスポンス
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SliceResponse {
     /// 返却されたデータの開始行番号 (0-indexed)
     pub start_row: usize,
@@ -101,6 +107,7 @@ pub struct SliceResponse {
 
 /// ファイル分割（Split CSV）の実行結果
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SplitResult {
     /// 生成された分割ファイル数
     pub chunk_count: usize,
@@ -112,6 +119,7 @@ pub struct SplitResult {
 
 /// 単一セルの置換結果
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ReplaceResult {
     /// 置換された行インデックス (0-indexed)
     pub row: usize,
@@ -125,6 +133,7 @@ pub struct ReplaceResult {
 
 /// 一括置換レスポンス
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ReplaceAllResponse {
     /// 置換された総セル件数
     pub replaced_count: usize,

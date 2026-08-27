@@ -315,6 +315,36 @@ fn replace_all(
     ))
 }
 
+/// ウィンドウを閉じる（アプリ終了）
+#[tauri::command]
+fn close_window(window: tauri::Window) {
+    let _ = window.close();
+}
+
+/// ウィンドウを最小化
+#[tauri::command]
+fn minimize_window(window: tauri::Window) {
+    let _ = window.minimize();
+}
+
+/// ウィンドウの最大化/復元をトグル
+#[tauri::command]
+fn toggle_maximize_window(window: tauri::Window) {
+    if let Ok(is_maximized) = window.is_maximized() {
+        if is_maximized {
+            let _ = window.unmaximize();
+        } else {
+            let _ = window.maximize();
+        }
+    }
+}
+
+/// ウィンドウのドラッグ移動を開始
+#[tauri::command]
+fn start_dragging(window: tauri::Window) {
+    let _ = window.start_dragging();
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(AppState {
@@ -344,6 +374,10 @@ fn main() {
             update_from_text,
             clear_modified_cells,
             save_csv,
+            close_window,
+            minimize_window,
+            toggle_maximize_window,
+            start_dragging,
         ])
         .run(tauri::generate_context!())
         .expect("error while running QuCSVPreview tauri application");

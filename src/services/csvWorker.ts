@@ -13,7 +13,8 @@ interface WorkerState {
   rawLines: string[];
   hasHeader: boolean;
   lines: string[];
-  headers: string[];
+  headers: string[];       // 表示用（空フィールドは "Col N" に置換済み）
+  rawHeaders: string[];    // 元の値（空文字列のまま保持・テキスト再構築用）
   delimiter: string;
   encoding: SupportedEncoding;
   lineEnding: string;
@@ -29,6 +30,7 @@ const state: WorkerState = {
   hasHeader: true,
   lines: [],
   headers: [],
+  rawHeaders: [],
   delimiter: ',',
   encoding: 'UTF-8',
   lineEnding: 'LF',
@@ -169,8 +171,11 @@ function parseTextLines(text: string, customDelimiter?: string, forcedFileName?:
   state.hasHeader = true;
 
   const headerLine = rawLines[0] || '';
-  const headers = parseLine(headerLine, state.delimiter).map((h, i) => h.trim() || `Col ${i + 1}`);
-  state.headers = headers;
+  const parsedFirstLine = parseLine(headerLine, state.delimiter);
+  // 表示用（空フィールドは "Col N" に置換）
+  state.headers = parsedFirstLine.map((h, i) => h.trim() || `Col ${i + 1}`);
+  // 元の値（空文字列のまま保持・テキスト再構築用）
+  state.rawHeaders = parsedFirstLine.map((h) => h);
   state.lines = rawLines.slice(1);
   state.modifiedCells.clear();
 }
@@ -240,6 +245,7 @@ self.onmessage = (e: MessageEvent) => {
             encoding: state.encoding,
             lineEnding: state.lineEnding,
             delimiter: state.delimiter,
+            rawText: text,
             isDirty: false,
             loadTimeMs,
           },
@@ -331,10 +337,12 @@ self.onmessage = (e: MessageEvent) => {
           if (hasHeader) {
             // 1行目をヘッダーとする（2行目以降がデータ行）
             state.headers = parsedFirstLine.map((h, i) => h.trim() || `Col ${i + 1}`);
+            state.rawHeaders = parsedFirstLine.map((h) => h);
             state.lines = state.rawLines.slice(1);
           } else {
             // ヘッダーなし: ヘッダー表示は連番数字（1, 2, 3...）、1行目をデータ行（1行目）として表示
             state.headers = Array.from({ length: colCount }, (_, i) => String(i + 1));
+            state.rawHeaders = [];
             state.lines = [...state.rawLines];
           }
         }
@@ -627,8 +635,15 @@ self.onmessage = (e: MessageEvent) => {
         };
 
         let output = '';
-        if (state.hasHeader && state.headers.length > 0) {
-          const headerLine = state.headers.map(escapeCell).join(outDelimiter);
+        if (state.hasHeader) {
+          // rawHeaders（元の空文字列を保持）を優先。なければ rawLines[0] から直接構築
+          const headerSource =
+            state.rawHeaders.length > 0
+              ? state.rawHeaders
+              : state.rawLines.length > 0
+                ? parseLine(state.rawLines[0] || '', state.delimiter)
+                : state.headers;
+          const headerLine = headerSource.map(escapeCell).join(outDelimiter);
           output = headerLine + le;
         }
 

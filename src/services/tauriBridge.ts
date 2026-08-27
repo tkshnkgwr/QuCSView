@@ -73,23 +73,46 @@ export class TauriBridge {
     customDelimiter?: SupportedDelimiter,
     forcedEncoding?: SupportedEncoding
   ): Promise<FileMetadata> {
-    if (isTauriEnv()) {
+    const filePath = (file as any).path;
+
+    // 1. ファイルパス（絶対パス）が存在する場合、Tauri ネイティブの mmap ロードを試行
+    if (filePath && isTauriEnv()) {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
-        return await invoke<FileMetadata>('open_csv_file', {
-          path: (file as any).path || file.name,
+        const meta = await invoke<FileMetadata>('open_csv_file', {
+          path: filePath,
           customDelimiter: customDelimiter || null,
         });
+
+        // Web Worker 側にも同期ロードしておく（テキスト表示やフォールバック用）
+        try {
+          const buffer = await file.arrayBuffer();
+          sendWorkerMessage<FileMetadata>(
+            'OPEN_FILE_BUFFER',
+            {
+              buffer,
+              fileName: file.name,
+              fileSize: file.size,
+              customDelimiter,
+              forcedEncoding,
+            },
+            [buffer]
+          ).catch(() => {});
+        } catch (_) {}
+
+        return meta;
       } catch (err) {
-        console.warn('Tauri invoke failed, falling back to WebWorker:', err);
+        console.warn('Tauri open_csv_file with path failed, falling back to buffer sync:', err);
       }
     }
 
+    // 2. パスが無い（HTML5 input経由）またはネイティブオープン失敗時
+    // ArrayBuffer を取得して Web Worker にロードし、メタデータ（判定エンコーディング等）を取得
     const buffer = await file.arrayBuffer();
-    return sendWorkerMessage<FileMetadata>(
+    const meta = await sendWorkerMessage<FileMetadata & { rawText?: string }>(
       'OPEN_FILE_BUFFER',
       {
-        buffer,
+        buffer: buffer.slice(0),
         fileName: file.name,
         fileSize: file.size,
         customDelimiter,
@@ -97,6 +120,21 @@ export class TauriBridge {
       },
       [buffer]
     );
+
+    // Tauri 環境の場合は、デコードした純粋な生テキストそのものを Rust 側にも渡して完全初期化！
+    if (isTauriEnv() && meta.rawText) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('update_from_text', {
+          text: meta.rawText,
+          customDelimiter: meta.delimiter || null,
+        });
+      } catch (err) {
+        console.warn('Failed to sync raw file text to Tauri Rust engine:', err);
+      }
+    }
+
+    return meta;
   }
 
   /**
@@ -109,12 +147,26 @@ export class TauriBridge {
     if (isTauriEnv()) {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
-        return await invoke<FileMetadata>('open_csv_file', {
+        const meta = await invoke<FileMetadata>('open_csv_file', {
           path: filePath,
           customDelimiter: customDelimiter || null,
         });
+
+        // Rust から生テキストを取得して Web Worker にも同期
+        try {
+          const rawText = await invoke<string>('get_raw_text', { maxLines: null });
+          sendWorkerMessage<FileMetadata>('OPEN_FILE_TEXT', {
+            text: rawText,
+            fileName: meta.fileName,
+            fileSize: meta.fileSize,
+            customDelimiter: meta.delimiter,
+          }).catch(() => {});
+        } catch (_) {}
+
+        return meta;
       } catch (err) {
         console.warn('Tauri open_csv_file failed:', err);
+        throw err;
       }
     }
     throw new Error('File path opening is only supported in native desktop environment');
@@ -127,22 +179,26 @@ export class TauriBridge {
     encoding: SupportedEncoding,
     customDelimiter?: SupportedDelimiter
   ): Promise<FileMetadata> {
+    const workerPromise = sendWorkerMessage<FileMetadata>('RELOAD_WITH_ENCODING', {
+      encoding,
+      customDelimiter,
+    });
+
     if (isTauriEnv()) {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
-        return await invoke<FileMetadata>('set_encoding', {
+        const meta = await invoke<FileMetadata>('set_encoding', {
           encoding,
           customDelimiter: customDelimiter || null,
         });
+        await workerPromise;
+        return meta;
       } catch (err) {
         console.warn('Tauri invoke failed, falling back to WebWorker:', err);
       }
     }
 
-    return sendWorkerMessage<FileMetadata>('RELOAD_WITH_ENCODING', {
-      encoding,
-      customDelimiter,
-    });
+    return workerPromise;
   }
 
   /**
@@ -153,12 +209,31 @@ export class TauriBridge {
     fileName: string,
     customDelimiter?: SupportedDelimiter
   ): Promise<FileMetadata> {
-    return sendWorkerMessage<FileMetadata>('OPEN_FILE_TEXT', {
+    // 常に WebWorker も初期化（フォールバック時や生テキスト同期用）
+    const workerPromise = sendWorkerMessage<FileMetadata>('OPEN_FILE_TEXT', {
       text,
       fileName,
       fileSize: text.length,
       customDelimiter,
     });
+
+    if (isTauriEnv()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const meta = await invoke<FileMetadata>('update_from_text', {
+          text,
+          customDelimiter: customDelimiter || null,
+        });
+        meta.fileName = fileName;
+        meta.filePath = `/sample/${fileName}`;
+        await workerPromise;
+        return meta;
+      } catch (err) {
+        console.warn('Tauri update_from_text failed, falling back to WebWorker:', err);
+      }
+    }
+
+    return workerPromise;
   }
 
 // UPDATE 2026-08-21: [ソートパラメータ連携] getSlice に sortConfig パラメータを追加
@@ -175,19 +250,24 @@ export class TauriBridge {
     if (isTauriEnv()) {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
+        const safeSortConfig =
+          sortConfig && sortConfig.column !== undefined && sortConfig.column >= 0
+            ? { column: sortConfig.column, direction: sortConfig.direction }
+            : null;
+
         const res = await invoke<any>('get_slice', {
           startRow,
           rowCount,
-          filterIndices: filterIndices || null,
-          sortConfig: sortConfig || null,
+          filterIndices: filterIndices && filterIndices.length > 0 ? filterIndices : null,
+          sortConfig: safeSortConfig,
         });
         return {
-          startRow: res.start_row ?? res.startRow ?? startRow,
+          startRow: res.startRow ?? res.start_row ?? startRow,
           rows: res.rows ?? [],
-          totalRows: res.total_rows ?? res.totalRows ?? 0,
+          totalRows: res.totalRows ?? res.total_rows ?? 0,
           originalRowIndices:
-            res.original_row_indices ??
             res.originalRowIndices ??
+            res.original_row_indices ??
             (res.rows ? res.rows.map((_: any, i: number) => startRow + i) : []),
         };
       } catch (err) {
@@ -239,16 +319,21 @@ export class TauriBridge {
     headers: string[];
     hasHeader: boolean;
   }> {
+    // WebWorker にも必ず同期（Rust フォールバック時・テキスト表示時に一貫性を保つため）
+    const workerPromise = sendWorkerMessage<any>('SET_HAS_HEADER', { hasHeader });
+
     if (isTauriEnv()) {
       try {
         const { invoke } = await import('@tauri-apps/api/core');
-        return await invoke<any>('set_has_header', { hasHeader });
+        const result = await invoke<any>('set_has_header', { hasHeader });
+        await workerPromise;
+        return result;
       } catch (err) {
         console.warn('Tauri invoke failed, falling back to WebWorker:', err);
       }
     }
 
-    return sendWorkerMessage<any>('SET_HAS_HEADER', { hasHeader });
+    return workerPromise;
   }
 
   // UPDATE 2026-08-21: [選択範囲のTSVデータ抽出]

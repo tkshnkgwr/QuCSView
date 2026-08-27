@@ -212,3 +212,78 @@ fn test_replace_cell_case_insensitive() {
     assert_eq!(res.new_value, "Lead Engineer");
     assert_eq!(engine.get_cell_value(0, 1), "Lead Engineer");
 }
+
+#[test]
+fn test_set_has_header_with_in_memory_rows() {
+    let csv_data = "Name,Age\r\nAlice,30\r\nBob,25\r\n";
+    let mut engine = CsvEngine::new();
+    let meta = engine.update_from_text(csv_data, None).unwrap();
+    assert_eq!(meta.total_rows, 2);
+    assert_eq!(meta.headers, vec!["Name", "Age"]);
+
+    // ヘッダーなしに切替
+    let meta_no_hdr = engine.set_has_header(false).unwrap();
+    assert_eq!(meta_no_hdr.total_rows, 3);
+    assert_eq!(meta_no_hdr.headers, vec!["1", "2"]);
+    assert_eq!(engine.get_cell_value(0, 0), "Name");
+    assert_eq!(engine.get_cell_value(1, 0), "Alice");
+
+    // 再度ヘッダーありに切替
+    let meta_hdr = engine.set_has_header(true).unwrap();
+    assert_eq!(meta_hdr.total_rows, 2);
+    assert_eq!(meta_hdr.headers, vec!["Name", "Age"]);
+    assert_eq!(engine.get_cell_value(0, 0), "Alice");
+}
+
+#[test]
+fn test_set_has_header_with_mmap() {
+    let csv_data = "Name,Age\r\nAlice,30\r\nBob,25\r\n";
+    let temp_file = create_test_csv(csv_data);
+    let mut engine = CsvEngine::new();
+    let meta = engine.open_file(temp_file.path(), None).unwrap();
+    assert_eq!(meta.total_rows, 2);
+
+    // ヘッダーなしに切替
+    let meta_no_hdr = engine.set_has_header(false).unwrap();
+    assert_eq!(meta_no_hdr.total_rows, 3);
+    assert_eq!(meta_no_hdr.headers, vec!["1", "2"]);
+    assert_eq!(engine.get_cell_value(0, 0), "Name");
+
+    // 再度ヘッダーありに切替
+    let meta_hdr = engine.set_has_header(true).unwrap();
+    assert_eq!(meta_hdr.total_rows, 2);
+    assert_eq!(meta_hdr.headers, vec!["Name", "Age"]);
+    assert_eq!(engine.get_cell_value(0, 0), "Alice");
+}
+
+#[test]
+fn test_header_toggle_with_empty_cells_preserves_empty_value() {
+    let csv_data = "30,,1,20260727\r\n40,,1,20260727\r\n";
+    let temp_file = create_test_csv(csv_data);
+    let mut engine = CsvEngine::new();
+    let meta = engine.open_file(temp_file.path(), None).unwrap();
+    // 表示用ヘッダーは空セルが "Col 2" に置換される
+    assert_eq!(meta.headers, vec!["30", "Col 2", "1", "20260727"]);
+
+    // ヘッダーなしに切替
+    let meta_no_hdr = engine.set_has_header(false).unwrap();
+    assert_eq!(meta_no_hdr.total_rows, 2);
+    // プレビューの 0行目 1列目は元の空文字列のまま（"Col 2" が入っていないこと）
+    assert_eq!(engine.get_cell_value(0, 0), "30");
+    assert_eq!(engine.get_cell_value(0, 1), "");
+
+    // get_raw_text にも "Col 2" が含まれないこと
+    let raw_text = engine.get_raw_text(None);
+    assert!(!raw_text.contains("Col 2"));
+    assert!(raw_text.starts_with("30,,1,20260727"));
+
+    // update_from_text (WebWorker からの同期) の場合もテスト
+    let mut mem_engine = CsvEngine::new();
+    mem_engine.update_from_text(csv_data, None).unwrap();
+    let mem_no_hdr = mem_engine.set_has_header(false).unwrap();
+    assert_eq!(mem_no_hdr.total_rows, 2);
+    assert_eq!(mem_engine.get_cell_value(0, 1), "");
+    let mem_raw_text = mem_engine.get_raw_text(None);
+    assert!(!mem_raw_text.contains("Col 2"));
+    assert!(mem_raw_text.starts_with("30,,1,20260727"));
+}

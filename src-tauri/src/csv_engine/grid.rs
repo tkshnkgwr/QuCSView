@@ -9,36 +9,84 @@ use super::CsvEngine;
 impl CsvEngine {
     /// ヘッダーの有無を切替
     pub fn set_has_header(&mut self, has_header: bool) -> anyhow::Result<FileMetadata> {
-        self.has_header = has_header;
-        let total_lines = self.line_offsets.len();
+        if self.has_header == has_header {
+            return Ok(self.get_metadata());
+        }
 
-        if !has_header {
-            self.total_rows = total_lines;
-            self.headers = (1..=self.total_cols.max(1))
-                .map(|i| i.to_string())
-                .collect();
+        self.has_header = has_header;
+        self.modified_cells.clear();
+
+        // 1. インメモリ行が存在する場合（サンプルデータ・テキスト編集後・構造変更後）
+        if let Some(rows) = &mut self.in_memory_rows {
+            if !has_header {
+                // ヘッダーなしにする: raw_headers（元の値）をデータ行先頭に戻す
+                // raw_headers が空なら表示用 headers を使う（フォールバック）
+                let restored = if !self.raw_headers.is_empty() {
+                    std::mem::take(&mut self.raw_headers)
+                } else {
+                    std::mem::take(&mut self.headers)
+                };
+                self.headers = (1..=self.total_cols.max(1))
+                    .map(|i| i.to_string())
+                    .collect();
+                self.raw_headers = Vec::new();
+                rows.insert(0, restored);
+                self.total_rows = rows.len();
+            } else {
+                // ヘッダーありにする: データ行の先頭 (0行目) を抜き出してヘッダーにする
+                if !rows.is_empty() {
+                    let first_row = rows.remove(0);
+                    self.raw_headers = first_row.clone(); // 元の値を保持
+                    self.headers = first_row
+                        .into_iter()
+                        .enumerate()
+                        .map(|(idx, field)| {
+                            if field.trim().is_empty() {
+                                format!("Col {}", idx + 1)
+                            } else {
+                                field
+                            }
+                        })
+                        .collect();
+                }
+                self.total_rows = rows.len();
+            }
         } else {
-            self.total_rows = if total_lines > 0 { total_lines - 1 } else { 0 };
-            let mut headers = Vec::new();
-            if !self.line_offsets.is_empty() {
-                let header_row_slice = self.get_decoded_line_at(0)?;
-                let mut rdr = csv::ReaderBuilder::new()
-                    .delimiter(self.delimiter)
-                    .has_headers(false)
-                    .from_reader(header_row_slice.as_bytes());
-                if let Some(result) = rdr.records().next() {
-                    let record = result?;
-                    for (idx, field) in record.iter().enumerate() {
-                        let field_name = if field.trim().is_empty() {
-                            format!("Col {}", idx + 1)
-                        } else {
-                            field.to_string()
-                        };
-                        headers.push(field_name);
+            // 2. メモリマップドファイル走査の場合（ファイルから直接再パース）
+            let total_lines = self.line_offsets.len();
+
+            if !has_header {
+                self.total_rows = total_lines;
+                self.headers = (1..=self.total_cols.max(1))
+                    .map(|i| i.to_string())
+                    .collect();
+                self.raw_headers = Vec::new();
+            } else {
+                self.total_rows = total_lines.saturating_sub(1);
+                let mut headers = Vec::new();
+                let mut raw_headers = Vec::new();
+                if !self.line_offsets.is_empty() {
+                    let header_row_slice = self.get_decoded_line_at(0)?;
+                    let mut rdr = csv::ReaderBuilder::new()
+                        .delimiter(self.delimiter)
+                        .has_headers(false)
+                        .from_reader(header_row_slice.as_bytes());
+                    if let Some(result) = rdr.records().next() {
+                        let record = result?;
+                        for (idx, field) in record.iter().enumerate() {
+                            raw_headers.push(field.to_string());
+                            let field_name = if field.trim().is_empty() {
+                                format!("Col {}", idx + 1)
+                            } else {
+                                field.to_string()
+                            };
+                            headers.push(field_name);
+                        }
                     }
                 }
+                self.headers = headers;
+                self.raw_headers = raw_headers;
             }
-            self.headers = headers;
         }
 
         Ok(self.get_metadata())
@@ -442,36 +490,15 @@ impl CsvEngine {
         if let Some(c) = custom_delimiter {
             self.delimiter = c as u8;
         }
-        self.in_memory_rows = None;
-        self.modified_cells.clear();
 
-        // ヘッダー再パース
-        let mut headers = Vec::new();
-        let mut total_cols = 0;
-        if !self.line_offsets.is_empty() {
-            let header_row_slice = self.get_decoded_line_at(0)?;
-            let mut rdr = csv::ReaderBuilder::new()
-                .delimiter(self.delimiter)
-                .has_headers(false)
-                .from_reader(header_row_slice.as_bytes());
-
-            if let Some(result) = rdr.records().next() {
-                let record = result?;
-                total_cols = record.len();
-                for (idx, field) in record.iter().enumerate() {
-                    let field_name = if field.trim().is_empty() {
-                        format!("Col {}", idx + 1)
-                    } else {
-                        field.to_string()
-                    };
-                    headers.push(field_name);
-                }
-            }
+        // 1. 実ファイルパスが存在する場合、指定のエンコーディングで完全に開き直す
+        if let Some(path) = self.file_path.clone() {
+            return self.open_file(&path, custom_delimiter);
         }
 
-        self.headers = headers;
-        self.total_cols = total_cols;
-
+        // 2. インメモリ行（サンプルデータ・生テキスト等）の場合
+        // インメモリ行データは既にUTF-8文字列として保持されているため、データを破棄せずメタデータを更新
+        self.modified_cells.clear();
         Ok(self.get_metadata())
     }
 

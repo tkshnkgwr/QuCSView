@@ -131,14 +131,17 @@ export default function App() {
         filterMode: false,
       }));
       setJumpToRowTrigger(0);
-      if (viewMode === 'text') {
+
+      // 生テキストも即座に同期取得
+      try {
         const text = await TauriBridge.getCurrentText(meta.lineEnding, meta.delimiter);
-        setRawText(text);
-      }
+        setRawText(text || '');
+      } catch (_) {}
 
       // 最近開いたファイル履歴に追加
       const updated = addRecentFile({
         name: file.name,
+        path: (file as any).path || meta.filePath,
         size: file.size,
         encoding: meta.encoding,
       });
@@ -166,6 +169,12 @@ export default function App() {
           filterMode: false,
         }));
         setJumpToRowTrigger(0);
+
+        // 生テキストも即座に同期取得
+        try {
+          const text = await TauriBridge.getCurrentText(meta.lineEnding, meta.delimiter);
+          setRawText(text || '');
+        } catch (_) {}
 
         const updated = addRecentFile(recent);
         setRecentFiles(updated);
@@ -220,10 +229,10 @@ export default function App() {
 
   // 表示モード切替 (表プレビュー ⇔ テキスト表示)
   const handleToggleViewMode = async (mode: ViewMode) => {
-    if (mode === 'text' && metadata) {
+    if (mode === 'text') {
       try {
-        const text = await TauriBridge.getCurrentText(metadata.lineEnding, metadata.delimiter);
-        setRawText(text);
+        const text = await TauriBridge.getCurrentText(metadata?.lineEnding, metadata?.delimiter);
+        setRawText(text || '');
       } catch (err) {
         console.error('Failed to get raw text:', err);
       }
@@ -248,6 +257,7 @@ export default function App() {
     try {
       const updated = await TauriBridge.setHasHeader(val);
       setHasHeader(val);
+      setActiveCell({ row: 0, col: 0 });
       setMetadata((prev) =>
         prev
           ? {
@@ -259,6 +269,16 @@ export default function App() {
             }
           : null
       );
+
+      // スライス再取得を確実にトリガーするため先頭行（0）へジャンプ
+      setJumpToRowTrigger(0);
+
+      // 生テキストも即座に同期取得
+      try {
+        const text = await TauriBridge.getCurrentText(metadata?.lineEnding, metadata?.delimiter);
+        setRawText(text || '');
+      } catch (_) {}
+
       // 検索結果の再評価
       if (searchState.query) {
         const { matches, error } = await TauriBridge.search(
@@ -332,6 +352,13 @@ export default function App() {
       setMetadata(updatedMeta);
       setActiveCellValue('');
       setModifiedCells(new Set());
+
+      // 生テキストも即座に再取得して同期
+      try {
+        const text = await TauriBridge.getCurrentText(updatedMeta.lineEnding, updatedMeta.delimiter);
+        setRawText(text || '');
+      } catch (_) {}
+
       if (searchState.query) {
         executeSearch(
           searchState.query,
@@ -353,6 +380,13 @@ export default function App() {
       setMetadata(updatedMeta);
       setActiveCellValue('');
       setModifiedCells(new Set());
+
+      // 生テキストも即座に再取得して同期
+      try {
+        const text = await TauriBridge.getCurrentText(updatedMeta.lineEnding, updatedMeta.delimiter);
+        setRawText(text || '');
+      } catch (_) {}
+
       if (searchState.query) {
         executeSearch(
           searchState.query,
@@ -380,9 +414,9 @@ export default function App() {
   }, []);
 
   // セル編集完了コールバック (未保存セルのSetに追加 & isDirty更新 & Undoスタック記録)
-  const handleCellEdited = async (row: number, col: number, value: string) => {
+  const handleCellEdited = async (row: number, col: number, value: string, prevValueParam?: string) => {
     try {
-      const prevValue = await TauriBridge.getCellValue(row, col);
+      const prevValue = prevValueParam !== undefined ? prevValueParam : await TauriBridge.getCellValue(row, col);
       if (prevValue === value) return;
 
       await TauriBridge.editCell(row, col, value);
@@ -1115,6 +1149,7 @@ export default function App() {
             searchQuery={searchState.query}
             searchCaseSensitive={searchState.caseSensitive}
             searchUseRegex={searchState.useRegex}
+            currentMatchIndex={searchState.currentIndex}
             onTextChange={handleRawTextChange}
             onSaveFile={handleSaveFile}
           />
