@@ -175,13 +175,122 @@ impl CsvEngine {
         // 通常表示
         let actual_start = start_row.min(self.total_rows);
         let actual_end = (actual_start + count).min(self.total_rows);
-        let mut rows = Vec::with_capacity(actual_end - actual_start);
-        let mut orig_indices = Vec::with_capacity(actual_end - actual_start);
+        let slice_len = actual_end - actual_start;
+        let mut rows = Vec::with_capacity(slice_len);
+        let mut orig_indices = Vec::with_capacity(slice_len);
 
-        for row_idx in actual_start..actual_end {
-            let row_cells = self.get_row_data(row_idx)?;
-            rows.push(row_cells);
-            orig_indices.push(row_idx);
+        // 1. メモリ保持モード時は高速クローン
+        if let Some(ref mem_rows) = self.in_memory_rows {
+            for row_idx in actual_start..actual_end {
+                if row_idx < mem_rows.len() {
+                    rows.push(mem_rows[row_idx].clone());
+                } else {
+                    rows.push(vec![String::new(); self.total_cols]);
+                }
+                orig_indices.push(row_idx);
+            }
+            return Ok(SliceResponse {
+                start_row: actual_start,
+                rows,
+                total_rows: self.total_rows,
+                original_row_indices: orig_indices,
+            });
+        }
+
+        // 2. mmapモード時はスライス範囲を一括デコード＆単一Readerで高速ストリーム読み取り
+        let line_offset_start = if self.has_header {
+            actual_start + 1
+        } else {
+            actual_start
+        };
+        let line_offset_end = if self.has_header {
+            actual_end + 1
+        } else {
+            actual_end
+        };
+
+        let mut batch_success = false;
+        if let Some(ref mmap) = self.mmap {
+            if line_offset_start < self.line_offsets.len() {
+                let start_byte = self.line_offsets[line_offset_start];
+                let end_byte = if line_offset_end < self.line_offsets.len() {
+                    self.line_offsets[line_offset_end]
+                } else {
+                    mmap.len()
+                };
+
+                if start_byte <= end_byte && end_byte <= mmap.len() {
+                    let raw_bytes = &mmap[start_byte..end_byte];
+                    let decoded = match self.encoding {
+                        SupportedEncoding::Utf8 | SupportedEncoding::Utf8Bom => {
+                            String::from_utf8_lossy(raw_bytes).to_string()
+                        }
+                        SupportedEncoding::ShiftJis => {
+                            let (cow, _, _) = encoding_rs::SHIFT_JIS.decode(raw_bytes);
+                            cow.into_owned()
+                        }
+                        SupportedEncoding::EucJp => {
+                            let (cow, _, _) = encoding_rs::EUC_JP.decode(raw_bytes);
+                            cow.into_owned()
+                        }
+                    };
+
+                    let mut rdr = csv::ReaderBuilder::new()
+                        .delimiter(self.delimiter)
+                        .has_headers(false)
+                        .flexible(true)
+                        .from_reader(decoded.as_bytes());
+
+                    let mut batch_rows = Vec::with_capacity(slice_len);
+                    let mut batch_orig = Vec::with_capacity(slice_len);
+
+                    for (offset, result) in rdr.records().enumerate() {
+                        if offset >= slice_len {
+                            break;
+                        }
+                        let physical_row = actual_start + offset;
+                        let mut row_cells: Vec<String> = match result {
+                            Ok(record) => record.iter().map(|s| s.to_string()).collect(),
+                            Err(_) => vec![String::new(); self.total_cols],
+                        };
+
+                        while row_cells.len() < self.total_cols {
+                            row_cells.push(String::new());
+                        }
+
+                        // 未保存編集セルがあれば反映
+                        for col_idx in 0..self.total_cols {
+                            if let Some(modified_val) =
+                                self.modified_cells.get(&(physical_row, col_idx))
+                            {
+                                if col_idx < row_cells.len() {
+                                    row_cells[col_idx] = modified_val.clone();
+                                }
+                            }
+                        }
+
+                        batch_rows.push(row_cells);
+                        batch_orig.push(physical_row);
+                    }
+
+                    if batch_rows.len() == slice_len {
+                        rows = batch_rows;
+                        orig_indices = batch_orig;
+                        batch_success = true;
+                    }
+                }
+            }
+        }
+
+        // 一括取得が適用できなかった場合のフォールバック（行単位取得）
+        if !batch_success {
+            rows.clear();
+            orig_indices.clear();
+            for row_idx in actual_start..actual_end {
+                let row_cells = self.get_row_data(row_idx)?;
+                rows.push(row_cells);
+                orig_indices.push(row_idx);
+            }
         }
 
         Ok(SliceResponse {
@@ -471,7 +580,18 @@ impl CsvEngine {
                     }
                     first_c = false;
                     if c < row_data.len() {
-                        tsv_output.push_str(&row_data[c]);
+                        let cell_str = &row_data[c];
+                        if cell_str.contains('\t')
+                            || cell_str.contains('\n')
+                            || cell_str.contains('\r')
+                            || cell_str.contains('"')
+                        {
+                            tsv_output.push('"');
+                            tsv_output.push_str(&cell_str.replace('"', "\"\""));
+                            tsv_output.push('"');
+                        } else {
+                            tsv_output.push_str(cell_str);
+                        }
                     }
                 }
             }

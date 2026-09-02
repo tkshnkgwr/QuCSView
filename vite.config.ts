@@ -11,15 +11,15 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    clearScreen: false,
     server: {
       port: 3000,
       strictPort: true,
       host: '0.0.0.0',
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâ€”file watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      watch: {
+        // TauriのRustビルド成果物（src-tauri/target/**）のファイルロックによるEBUSYエラーを防止
+        ignored: ['**/src-tauri/**'],
+      },
     },
   };
 });

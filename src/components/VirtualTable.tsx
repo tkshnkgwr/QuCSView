@@ -42,8 +42,14 @@ interface VirtualTableProps {
   onRedo?: () => void;
 }
 
+// UPDATE 2026-09-02: [2次元仮想スクロール（行＋カラム仮想化）]
+// なぜ: 210列等の多列CSVで全列DOM生成による2万超の要素数爆発・1秒フリーズを解消し、可視範囲＋予備列のみ描画で瞬時応答を実現するため。
 const ROW_HEIGHT = 30; // 1行あたりの固定高さ (px)
-const BUFFER_ROWS = 15; // スクロール前後のバッファ行数
+const ROW_NUM_WIDTH = 68; // 行番号列の固定幅 (px)
+const OVERSCAN_ROWS = 15; // 縦方向の予備描画行数 (上下15行 = 約450px)
+const OVERSCAN_COLS = 3; // 横方向の予備描画列数 (左右3列)
+const CHUNK_SIZE = 2000; // 1回のIPCで取得するチャンク行数 (2,000行ブロック)
+const MAX_CACHED_ROWS = 100000; // メモリ保持する最大行数 (10万行 = 約10MB〜20MBの快適メモリ展開)
 const DEFAULT_COL_WIDTH = 160;
 const MIN_COL_WIDTH = 60;
 
@@ -71,7 +77,7 @@ function renderHighlightedText(
           return (
             <mark
               key={idx}
-              className="bg-yellow-300 dark:bg-amber-400 text-gray-950 px-0.5 rounded-xs shadow-xs select-text font-semibold"
+              className="bg-yellow-300 dark:bg-amber-400 text-gray-950 px-0.5 rounded-xs shadow-xs select-none font-semibold"
             >
               {part}
             </mark>
@@ -109,7 +115,7 @@ function renderHighlightedText(
     nodes.push(
       <mark
         key={matchIndex}
-        className="bg-yellow-300 dark:bg-amber-400 text-gray-950 px-0.5 rounded-xs shadow-xs select-text font-semibold"
+        className="bg-yellow-300 dark:bg-amber-400 text-gray-950 px-0.5 rounded-xs shadow-xs select-none font-semibold"
       >
         {text.slice(matchIndex, matchIndex + qLen)}
       </mark>
@@ -151,10 +157,9 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
   const [containerHeight, setContainerHeight] = useState(600);
-  const [visibleRows, setVisibleRows] = useState<string[][]>([]);
-  const [originalRowIndices, setOriginalRowIndices] = useState<number[]>([]);
-  const [sliceStartRow, setSliceStartRow] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(1280);
   const [columnWidths, setColumnWidths] = useState<number[]>([]);
   
   // セル範囲選択ステート
@@ -164,11 +169,11 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
   const [copyToast, setCopyToast] = useState<{ message: string; visible: boolean } | null>(null);
   const [contextMenuTarget, setContextMenuTarget] = useState<ContextMenuTarget | null>(null);
 
-  // セル直接編集ステート (物理行番号, 列番号, スライス内行インデックス, 初期値)
+  // セル直接編集ステート (物理行番号, 列番号, 仮想行インデックス, 初期値)
   const [editingCell, setEditingCell] = useState<{
     row: number;
     col: number;
-    sliceIdx: number;
+    virtualIdx: number;
     initialValue: string;
   } | null>(null);
   const [editValue, setEditValue] = useState<string>('');
@@ -177,26 +182,17 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
   // カラム幅リサイズ用
   const resizingColRef = useRef<{ index: number; startX: number; startWidth: number } | null>(null);
 
-  // 検索ヒット位置・外部ジャンプの重複発火防止用（手動スクロール中に先頭へ引き戻されるのを完全防止）
+  // 検索ヒット位置・外部ジャンプの重複発火防止用
   const lastSearchMatchRef = useRef<{ row: number; col: number } | null>(null);
   const lastJumpRowRef = useRef<number | null>(null);
 
-  // ドラッグ選択終了の監視
-  useEffect(() => {
-    const handleMouseUp = () => {
-      setIsSelecting(false);
-    };
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => window.removeEventListener('mouseup', handleMouseUp);
-  }, []);
-
-  // 有効な行総数 (フィルタモード時はフィルタ該当件数)
-  const effectiveTotalRows = useMemo(() => {
-    if (filterMode && filterIndices) {
-      return filterIndices.length;
-    }
-    return metadata.totalRows;
-  }, [filterMode, filterIndices, metadata.totalRows]);
+  // 広域チャンクキャッシュ＆同期レンダリング用 Refs
+  const requestIdRef = useRef<number>(0);
+  const rowCacheRef = useRef<Map<number, string[]>>(new Map());
+  const fetchingChunksRef = useRef<Set<number>>(new Set());
+  const scrollDirectionRef = useRef<'down' | 'up'>('down');
+  const lastScrollTopRef = useRef<number>(0);
+  const [, setCacheVersion] = useState<number>(0);
 
   // 選択範囲内外の高速判定
   const isCellInRange = useMemo(() => {
@@ -219,8 +215,62 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
     return (r: number) => activeCell?.row === r;
   }, [selectedRange, activeCell]);
 
-  // UPDATE 2026-08-21: [選択セル範囲のクリップボードTSVコピー (Ctrl+C)]
-  // なぜ: 表計算ソフトやテキストエディタと親和性の高いTSV形式で選択範囲を瞬時にクリップボードへ保存するため
+  // ドラッグ選択終了の監視
+  useEffect(() => {
+    const handleMouseUp = () => {
+      setIsSelecting(false);
+    };
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => window.removeEventListener('mouseup', handleMouseUp);
+  }, []);
+
+  // 有効な行総数 (フィルタモード時はフィルタ該当件数)
+  const effectiveTotalRows = useMemo(() => {
+    if (filterMode && filterIndices) {
+      return filterIndices.length;
+    }
+    return metadata.totalRows;
+  }, [filterMode, filterIndices, metadata.totalRows]);
+
+  // TSVセルエスケープ処理（タブ・改行・クォート対応）
+  const formatTsvField = useCallback((val: string): string => {
+    if (val.includes('\t') || val.includes('\n') || val.includes('\r') || val.includes('"')) {
+      return `"${val.replace(/"/g, '""')}"`;
+    }
+    return val;
+  }, []);
+
+  // 確実なクリップボード書き込みユーティリティ (Navigator API + execCommand フォールバック)
+  const safeWriteClipboard = useCallback(async (text: string): Promise<boolean> => {
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (err) {
+        console.warn('navigator.clipboard.writeText failed, falling back to textarea execCommand:', err);
+      }
+    }
+
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      textArea.setAttribute('readonly', '');
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const success = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      return success;
+    } catch (err) {
+      console.error('Failed to copy text using execCommand:', err);
+      return false;
+    }
+  }, []);
+
+  // TSVコピー処理 (ローカルキャッシュ即時生成 ＋ Rustバックエンドフォールバック)
   const handleCopyTsv = useCallback(async () => {
     if (!metadata) return;
 
@@ -243,68 +293,116 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
       return;
     }
 
+    const rowCount = maxRow - minRow + 1;
+    const colCount = maxCol - minCol + 1;
+
     try {
-      const { tsvText, rowCount, colCount } = await TauriBridge.getRangeTsv(
-        minRow,
-        maxRow,
-        minCol,
-        maxCol,
-        filterIndices || undefined,
-        sortConfig
-      );
+      const cache = rowCacheRef.current;
+      let allCached = true;
+      for (let r = minRow; r <= maxRow; r++) {
+        if (!cache.has(r)) {
+          allCached = false;
+          break;
+        }
+      }
 
-      await navigator.clipboard.writeText(tsvText);
+      let tsvText = '';
+      if (allCached) {
+        const lines: string[] = [];
+        for (let r = minRow; r <= maxRow; r++) {
+          const rowData = cache.get(r) || [];
+          const lineCells: string[] = [];
+          for (let c = minCol; c <= maxCol; c++) {
+            lineCells.push(formatTsvField(rowData[c] ?? ''));
+          }
+          lines.push(lineCells.join('\t'));
+        }
+        tsvText = lines.join('\n');
+      } else {
+        const result = await TauriBridge.getRangeTsv(
+          minRow,
+          maxRow,
+          minCol,
+          maxCol,
+          filterIndices || undefined,
+          sortConfig
+        );
+        tsvText = result.tsvText;
+      }
 
-      const msg =
-        rowCount === 1 && colCount === 1
-          ? `クリップボードにコピーしました (1 セル)`
-          : `TSVコピー完了: ${rowCount.toLocaleString()} 行 × ${colCount} 列 (${(rowCount * colCount).toLocaleString()} セル)`;
+      const copySuccess = await safeWriteClipboard(tsvText);
 
-      setCopyToast({ message: msg, visible: true });
+      if (copySuccess) {
+        const msg =
+          rowCount === 1 && colCount === 1
+            ? `クリップボードにコピーしました (1 セル)`
+            : `TSVコピー完了: ${rowCount.toLocaleString()} 行 × ${colCount.toLocaleString()} 列 (${(rowCount * colCount).toLocaleString()} セル)`;
 
-      setTimeout(() => {
-        setCopyToast((prev) => (prev ? { ...prev, visible: false } : null));
-      }, 2400);
+        setCopyToast({ message: msg, visible: true });
+
+        setTimeout(() => {
+          setCopyToast((prev) => (prev ? { ...prev, visible: false } : null));
+        }, 2400);
+      }
     } catch (err) {
       console.error('Failed to copy TSV to clipboard:', err);
     }
-  }, [metadata, selectedRange, activeCell, filterIndices, sortConfig]);
+  }, [metadata, selectedRange, activeCell, filterIndices, sortConfig, formatTsvField, safeWriteClipboard]);
 
-  // UPDATE 2026-08-26: [列幅自動調整 (Auto-Fit Column Width)]
-  // なぜ: ヘッダー境界ダブルクリックで、現在読み込まれているスライスデータとヘッダーの最長幅に合わせて瞬時に列幅を最適化するため。
+  // グローバル copy イベントの捕捉
+  useEffect(() => {
+    const handleDocumentCopy = (e: ClipboardEvent) => {
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          (activeEl as HTMLElement).isContentEditable)
+      ) {
+        return;
+      }
+
+      if (selectedRange || activeCell) {
+        e.preventDefault();
+        handleCopyTsv();
+      }
+    };
+
+    document.addEventListener('copy', handleDocumentCopy);
+    return () => document.removeEventListener('copy', handleDocumentCopy);
+  }, [selectedRange, activeCell, handleCopyTsv]);
+
+  // 列幅自動調整 (Auto-Fit Column Width)
   const handleAutoFitColumn = useCallback((colIdx: number) => {
     if (!metadata) return;
     const headerText = metadata.headers[colIdx] || '';
     let maxLen = 0;
 
-    // ヘッダー文字列長（全角文字を2文字、半角文字を1文字換算）
     let headerWeight = 0;
     for (const char of headerText) {
       headerWeight += char.charCodeAt(0) > 127 ? 2 : 1;
     }
     maxLen = Math.max(maxLen, headerWeight);
 
-    // 読み込んでいるスライス行（visibleRows）のセル文字列長を走査
-    for (const row of visibleRows) {
+    // キャッシュされている全行からセル文字列長を走査
+    rowCacheRef.current.forEach((row) => {
       const cellVal = row[colIdx] || '';
       let cellWeight = 0;
       for (const char of cellVal) {
         cellWeight += char.charCodeAt(0) > 127 ? 2 : 1;
       }
       maxLen = Math.max(maxLen, cellWeight);
-    }
+    });
 
-    // 1文字あたり約 8.5px + 左右パディング 36px (ソートアイコン・余白含む)
     const optimalWidth = Math.max(MIN_COL_WIDTH, Math.min(600, Math.ceil(maxLen * 8.5) + 36));
     setColumnWidths((prev) => {
       const next = [...prev];
       next[colIdx] = optimalWidth;
       return next;
     });
-  }, [metadata, visibleRows]);
+  }, [metadata]);
 
-  // UPDATE 2026-08-26: [クリップボードからの矩形貼り付け (Ctrl + V)]
-  // なぜ: 表計算ソフトやテキストエディタからコピーした2次元TSV/CSVテキストを、アクティブセル起点で一括流し込み可能にするため。
+  // クリップボードからの矩形貼り付け
   const handlePasteClipboard = useCallback(async () => {
     if (!metadata || !activeCell || editingCell) return;
     try {
@@ -313,7 +411,7 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
 
       const rawLines = clipboardText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
       if (rawLines.length > 0 && rawLines[rawLines.length - 1] === '') {
-        rawLines.pop(); // 末尾の空行を除去
+        rawLines.pop();
       }
       if (rawLines.length === 0) return;
 
@@ -323,38 +421,45 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
 
       for (let r = 0; r < rawLines.length; r++) {
         const line = rawLines[r];
-        const targetRow = startRow + r;
-        if (targetRow >= metadata.totalRows) break; // テーブル範囲外は切り捨て
+        const targetVirtualRow = startRow + r;
+        if (targetVirtualRow >= effectiveTotalRows) break;
 
-        // TSV優先分割（タブが含まれない場合はCSVカンマ分割）
         const cells = line.includes('\t') ? line.split('\t') : line.split(',');
+
+        const targetPhysicalRow = filterMode && filterIndices
+          ? (filterIndices[targetVirtualRow] ?? targetVirtualRow)
+          : targetVirtualRow;
+
+        const cachedRow = rowCacheRef.current.get(targetVirtualRow) || [];
 
         for (let c = 0; c < cells.length; c++) {
           const targetCol = startCol + c;
           if (targetCol >= metadata.totalCols) break;
 
           let val = cells[c];
-          // クォート除去
           if (val.startsWith('"') && val.endsWith('"') && val.length >= 2) {
             val = val.slice(1, -1).replace(/""/g, '"');
           }
 
-          // 現在のスライス内から既存値を取得
-          const rowInSlice = targetRow - sliceStartRow;
-          const currentSliceRow = visibleRows[rowInSlice];
-          const prevVal = (currentSliceRow && currentSliceRow[targetCol]) || '';
+          const prevVal = cachedRow[targetCol] || '';
 
           changes.push({
-            row: targetRow,
+            row: targetPhysicalRow,
             col: targetCol,
             prevValue: prevVal,
             newValue: val,
           });
+
+          // キャッシュも即座に同期更新
+          if (cachedRow[targetCol] !== undefined) {
+            cachedRow[targetCol] = val;
+          }
         }
       }
 
       if (changes.length > 0 && onBatchCellEdited) {
         onBatchCellEdited(changes);
+        setCacheVersion((v) => v + 1);
         const pastedRowCount = rawLines.length;
         const pastedColCount = changes.length > 0 ? Math.ceil(changes.length / pastedRowCount) : 1;
         setCopyToast({
@@ -368,10 +473,9 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
     } catch (err) {
       console.warn('Failed to read clipboard text for paste:', err);
     }
-  }, [metadata, activeCell, editingCell, visibleRows, sliceStartRow, onBatchCellEdited]);
+  }, [metadata, activeCell, editingCell, effectiveTotalRows, filterMode, filterIndices, onBatchCellEdited]);
 
-  // UPDATE 2026-08-26: [選択セル範囲の簡易統計（合計・平均・件数・最大・最小）]
-  // なぜ: 複数セル選択時にステータスバーへ数値集計情報をリアルタイムに反映させるため。
+  // 選択セル範囲の簡易統計
   useEffect(() => {
     if (!onSelectionStatsChange) return;
 
@@ -391,15 +495,15 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
       return;
     }
 
-    // 表示中スライス（visibleRows）のセルから数値を抽出して簡易統計を算出
     let numCount = 0;
     let sum = 0;
     let minVal: number | null = null;
     let maxVal: number | null = null;
 
-    visibleRows.forEach((row, sliceIdx) => {
-      const physicalR = originalRowIndices[sliceIdx] !== undefined ? originalRowIndices[sliceIdx] : sliceStartRow + sliceIdx;
-      if (physicalR >= minR && physicalR <= maxR) {
+    const cache = rowCacheRef.current;
+    for (let virtualR = minR; virtualR <= maxR; virtualR++) {
+      const row = cache.get(virtualR);
+      if (row) {
         for (let c = minC; c <= maxC; c++) {
           const val = row[c] ?? '';
           const clean = val.replace(/,/g, '').trim();
@@ -412,7 +516,7 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
           }
         }
       }
-    });
+    }
 
     onSelectionStatsChange({
       selectedCount: totalCells,
@@ -422,7 +526,7 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
       min: minVal,
       max: maxVal,
     });
-  }, [selectedRange, visibleRows, sliceStartRow, originalRowIndices, onSelectionStatsChange]);
+  }, [selectedRange, onSelectionStatsChange]);
 
   // 初期列幅の設定
   useEffect(() => {
@@ -434,98 +538,232 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
     }
   }, [metadata.headers]);
 
-  // コンテナのリサイズ監視
+  // コンテナのリサイズ監視 (幅と高さを同時に追跡)
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         setContainerHeight(entry.contentRect.height);
+        setContainerWidth(entry.contentRect.width);
       }
     });
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
 
-  // 仮想表示範囲の計算
-  const { startRow, endRow, rowCount } = useMemo(() => {
+  // 画面枠内に即時描画すべき行範囲 (Overscan 15行)
+  const { renderStartRow, renderRowCount } = useMemo(() => {
     const total = effectiveTotalRows;
     const visibleCount = Math.ceil(containerHeight / ROW_HEIGHT);
-    const start = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - BUFFER_ROWS);
-    const end = Math.min(total, start + visibleCount + BUFFER_ROWS * 2);
+    const firstVisible = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT));
+    const start = Math.max(0, firstVisible - OVERSCAN_ROWS);
+    const end = Math.min(total, firstVisible + visibleCount + OVERSCAN_ROWS);
     return {
-      startRow: start,
-      endRow: end,
-      rowCount: Math.max(0, end - start),
+      renderStartRow: start,
+      renderRowCount: Math.max(0, end - start),
     };
   }, [scrollTop, containerHeight, effectiveTotalRows]);
 
-  // 画面枠内スライスの取得
-  const fetchSlice = useCallback(
-    async (
-      start: number,
-      count: number,
-      fIndices?: number[] | null,
-      currentSort?: SortConfig
-    ) => {
-      if (count <= 0) {
-        setVisibleRows([]);
-        setOriginalRowIndices([]);
-        return;
-      }
+  // 各列の左端X座標を事前計算 (行番号列 ROW_NUM_WIDTH を含む)
+  const columnOffsets = useMemo(() => {
+    const offsets: number[] = [];
+    let current = ROW_NUM_WIDTH;
+    for (let i = 0; i < metadata.headers.length; i++) {
+      offsets.push(current);
+      current += columnWidths[i] || DEFAULT_COL_WIDTH;
+    }
+    return offsets;
+  }, [metadata.headers.length, columnWidths]);
+
+  // 横スクロール位置に基づく可視列のインデックス範囲 (Overscan 左右3列)
+  const { renderStartCol, renderEndCol } = useMemo(() => {
+    const totalCols = metadata.headers.length;
+    if (totalCols === 0) return { renderStartCol: 0, renderEndCol: 0 };
+
+    const viewLeft = scrollLeft;
+    const viewRight = scrollLeft + containerWidth;
+
+    let start = 0;
+    while (
+      start < totalCols &&
+      columnOffsets[start] + (columnWidths[start] || DEFAULT_COL_WIDTH) < viewLeft
+    ) {
+      start++;
+    }
+    start = Math.max(0, start - OVERSCAN_COLS);
+
+    let end = start;
+    while (end < totalCols && columnOffsets[end] < viewRight) {
+      end++;
+    }
+    end = Math.min(totalCols, end + OVERSCAN_COLS);
+
+    return {
+      renderStartCol: start,
+      renderEndCol: Math.max(start + 1, end),
+    };
+  }, [scrollLeft, containerWidth, metadata.headers.length, columnOffsets, columnWidths]);
+
+  // チャンク単位での非同期データ取得 (2,000行ブロック)
+  const fetchChunk = useCallback(
+    async (chunkIndex: number, fIndices?: number[] | null, currentSort?: SortConfig) => {
+      if (fetchingChunksRef.current.has(chunkIndex)) return;
+      const startRow = chunkIndex * CHUNK_SIZE;
+      const total = effectiveTotalRows;
+      if (startRow >= total) return;
+      const count = Math.min(CHUNK_SIZE, total - startRow);
+      if (count <= 0) return;
+
+      fetchingChunksRef.current.add(chunkIndex);
+      const thisRequestId = requestIdRef.current;
+
       try {
         const response = await TauriBridge.getSlice(
-          start,
+          startRow,
           count,
           fIndices || undefined,
           currentSort || undefined
         );
-        setVisibleRows(response.rows);
-        setSliceStartRow(response.startRow);
-        const origIndices =
-          response.originalRowIndices || response.rows.map((_, i) => response.startRow + i);
-        setOriginalRowIndices(origIndices);
+
+        if (thisRequestId !== requestIdRef.current) {
+          fetchingChunksRef.current.delete(chunkIndex);
+          return;
+        }
+
+        const cache = rowCacheRef.current;
+        response.rows.forEach((row, i) => {
+          const virtualIdx = response.startRow + i;
+          cache.set(virtualIdx, row);
+        });
+
+        // キャッシュサイズ制限（最大100,000行を超えたら古いものを削除）
+        if (cache.size > MAX_CACHED_ROWS) {
+          const keysToDelete = Array.from(cache.keys()).slice(0, cache.size - MAX_CACHED_ROWS);
+          keysToDelete.forEach((k) => cache.delete(k));
+        }
+
+        setCacheVersion((v) => v + 1);
       } catch (err) {
-        console.error('Failed to fetch slice:', err);
+        if (thisRequestId === requestIdRef.current) {
+          console.error(`Failed to fetch chunk ${chunkIndex}:`, err);
+        }
+      } finally {
+        fetchingChunksRef.current.delete(chunkIndex);
       }
     },
-    // hasHeader, metadata.totalRows, metadata.headers を依存に含めることで
-    // ヘッダー切替・行数変化時に fetchSlice が再生成され、useEffect の再実行が確実に起きる
-    [hasHeader, metadata.totalRows, metadata.headers]
+    [effectiveTotalRows]
   );
 
-  // スライス取得のトリガー (スクロール、行数変化、ヘッダー変化、ヘッダー有無切替、検索絞り込み、ソート時のみ再取得)
+  // フィルタやソート変更時はローカルキャッシュをクリア
   useEffect(() => {
+    requestIdRef.current++;
+    rowCacheRef.current.clear();
+    fetchingChunksRef.current.clear();
+    setCacheVersion((v) => v + 1);
+  }, [filterMode, filterIndices, sortConfig]);
+
+  // スクロール位置に基づくチャンク取得＆先回りプリフェッチ (進行方向3チャンク = 6,000行先読み)
+  useEffect(() => {
+    const total = effectiveTotalRows;
+    if (total === 0) {
+      rowCacheRef.current.clear();
+      fetchingChunksRef.current.clear();
+      setCacheVersion((v) => v + 1);
+      return;
+    }
+
+    const visibleCount = Math.ceil(containerHeight / ROW_HEIGHT);
+    const firstVisible = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT));
+    const lastVisible = Math.min(total, firstVisible + visibleCount);
+
+    const startChunk = Math.floor(Math.max(0, firstVisible - OVERSCAN_ROWS) / CHUNK_SIZE);
+    const endChunk = Math.floor(Math.min(total - 1, lastVisible + OVERSCAN_ROWS) / CHUNK_SIZE);
+
     const activeFilter = filterMode && filterIndices ? filterIndices : null;
-    fetchSlice(startRow, rowCount, activeFilter, sortConfig);
+
+    // 1. 描画領域に必要なチャンクを最優先フェッチ
+    for (let chunk = startChunk; chunk <= endChunk; chunk++) {
+      const chunkStartRow = chunk * CHUNK_SIZE;
+      if (!rowCacheRef.current.has(chunkStartRow)) {
+        fetchChunk(chunk, activeFilter, sortConfig);
+      }
+    }
+
+    // 2. スクロール進行方向の先回りプリフェッチ (最大3チャンク = 6,000行先読み)
+    const isDown = scrollDirectionRef.current === 'down';
+    const maxChunk = Math.floor((total - 1) / CHUNK_SIZE);
+    for (let step = 1; step <= 3; step++) {
+      const prefetchChunk = isDown ? endChunk + step : startChunk - step;
+      if (prefetchChunk >= 0 && prefetchChunk <= maxChunk) {
+        const prefetchStartRow = prefetchChunk * CHUNK_SIZE;
+        if (!rowCacheRef.current.has(prefetchStartRow)) {
+          fetchChunk(prefetchChunk, activeFilter, sortConfig);
+        }
+      }
+    }
   }, [
-    startRow,
-    rowCount,
-    fetchSlice,
-    metadata.totalRows,
-    metadata.headers,
-    hasHeader,
-    metadata.hasHeader,
+    scrollTop,
+    containerHeight,
+    effectiveTotalRows,
+    fetchChunk,
     filterMode,
     filterIndices,
     sortConfig,
   ]);
 
-  // visibleRows や activeCell が変更された際に、現在選択されているセルの値を親へ同期
+  // バックグラウンド順次全行プリフェッチ (Idle Stream Loading: 開いて数秒で全行をメモリに常駐)
+  useEffect(() => {
+    const total = effectiveTotalRows;
+    if (total === 0) return;
+    const maxChunk = Math.floor((total - 1) / CHUNK_SIZE);
+    const activeFilter = filterMode && filterIndices ? filterIndices : null;
+
+    let isCancelled = false;
+    let nextChunk = 0;
+
+    const idleFetchLoop = () => {
+      if (isCancelled) return;
+      while (nextChunk <= maxChunk && rowCacheRef.current.has(nextChunk * CHUNK_SIZE)) {
+        nextChunk++;
+      }
+
+      if (nextChunk <= maxChunk && rowCacheRef.current.size < MAX_CACHED_ROWS) {
+        fetchChunk(nextChunk, activeFilter, sortConfig).then(() => {
+          nextChunk++;
+          if (!isCancelled) {
+            setTimeout(idleFetchLoop, 40); // 40ms間隔でバックグラウンド先読み
+          }
+        });
+      }
+    };
+
+    const timer = setTimeout(idleFetchLoop, 80);
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [effectiveTotalRows, fetchChunk, filterMode, filterIndices, sortConfig]);
+
+  // activeCell 変更時に現在値を親へ同期
   useEffect(() => {
     if (!activeCell || !onActiveCellChange) return;
 
-    const sliceIdx = activeCell.row - sliceStartRow;
-    if (sliceIdx >= 0 && sliceIdx < visibleRows.length && visibleRows[sliceIdx]) {
-      const cellVal = visibleRows[sliceIdx][activeCell.col] ?? '';
-      onActiveCellChange(activeCell, cellVal);
+    const rowData = rowCacheRef.current.get(activeCell.row);
+    if (rowData && rowData[activeCell.col] !== undefined) {
+      onActiveCellChange(activeCell, rowData[activeCell.col]);
     }
-  }, [visibleRows, activeCell, sliceStartRow, onActiveCellChange]);
+  }, [activeCell, onActiveCellChange]);
 
-  // スクロールイベント
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    setScrollTop(e.currentTarget.scrollTop);
-  };
+  // スクロールイベントの同期即時反映 (縦スクロール・横スクロール両方を完全同期追従)
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const currentScroll = e.currentTarget.scrollTop;
+    const currentLeft = e.currentTarget.scrollLeft;
+    scrollDirectionRef.current = currentScroll >= lastScrollTopRef.current ? 'down' : 'up';
+    lastScrollTopRef.current = currentScroll;
+    setScrollTop(currentScroll);
+    setScrollLeft(currentLeft);
+  }, []);
 
   // 外部からのジャンプ (行ジャンプ等)
   useEffect(() => {
@@ -555,7 +793,7 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
     }
   }, [jumpToRowTrigger, containerHeight, filterMode, filterIndices, setActiveCell, metadata.totalCols]);
 
-  // 検索ヒット位置への自動スクロール＆アクティブセル同期 (マッチ座標が実際に変更された時のみスクロール)
+  // 検索ヒット位置への自動スクロール＆アクティブセル同期
   useEffect(() => {
     if (!currentSearchMatch || !containerRef.current) {
       lastSearchMatchRef.current = null;
@@ -564,7 +802,6 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
 
     const { row: targetPhysicalRow, col: targetCol } = currentSearchMatch;
 
-    // 前回のマッチと同じ座標であれば、ユーザーの手動スクロール中なので自動スクロールしない！
     if (
       lastSearchMatchRef.current &&
       lastSearchMatchRef.current.row === targetPhysicalRow &&
@@ -610,16 +847,16 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
     });
 
     if (onActiveCellChange) {
-      const rowInSlice = targetVirtualRow - sliceStartRow;
-      if (visibleRows[rowInSlice] && visibleRows[rowInSlice][targetCol] !== undefined) {
-        onActiveCellChange(targetCoord, visibleRows[rowInSlice][targetCol]);
+      const rowData = rowCacheRef.current.get(targetVirtualRow);
+      if (rowData && rowData[targetCol] !== undefined) {
+        onActiveCellChange(targetCoord, rowData[targetCol]);
       }
     }
-  }, [currentSearchMatch, containerHeight, filterMode, filterIndices, setActiveCell, sliceStartRow, visibleRows, onActiveCellChange]);
+  }, [currentSearchMatch, containerHeight, filterMode, filterIndices, setActiveCell, onActiveCellChange]);
 
   // セル編集開始
-  const startEditing = (row: number, col: number, sliceIdx: number, currentValue: string) => {
-    setEditingCell({ row, col, sliceIdx, initialValue: currentValue });
+  const startEditing = (row: number, col: number, virtualIdx: number, currentValue: string) => {
+    setEditingCell({ row, col, virtualIdx, initialValue: currentValue });
     setEditValue(currentValue);
   };
 
@@ -633,19 +870,18 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
   // セル編集確定
   const commitEdit = () => {
     if (!editingCell) return;
-    const { row, col, sliceIdx, initialValue } = editingCell;
+    const { row, col, virtualIdx, initialValue } = editingCell;
     const valToSave = editValue;
 
     if (valToSave !== initialValue) {
-      setVisibleRows((prev) => {
-        const next = [...prev];
-        if (next[sliceIdx]) {
-          const rowCopy = [...next[sliceIdx]];
-          rowCopy[col] = valToSave;
-          next[sliceIdx] = rowCopy;
-        }
-        return next;
-      });
+      const cache = rowCacheRef.current;
+      const cachedRow = cache.get(virtualIdx);
+      if (cachedRow) {
+        const copy = [...cachedRow];
+        copy[col] = valToSave;
+        cache.set(virtualIdx, copy);
+        setCacheVersion((v) => v + 1);
+      }
 
       onCellEdited(row, col, valToSave, initialValue);
 
@@ -826,10 +1062,12 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
       }
     } else if (e.key === 'Enter' || e.key === 'F2') {
       e.preventDefault();
-      const rowInSlice = activeCell.row - sliceStartRow;
-      const cellVal = (visibleRows[rowInSlice] && visibleRows[rowInSlice][activeCell.col]) || '';
-      const physicalRow = originalRowIndices[rowInSlice] ?? activeCell.row;
-      startEditing(physicalRow, activeCell.col, rowInSlice, cellVal);
+      const cachedRow = rowCacheRef.current.get(activeCell.row) || [];
+      const cellVal = cachedRow[activeCell.col] || '';
+      const physicalRow = filterMode && filterIndices
+        ? (filterIndices[activeCell.row] ?? activeCell.row)
+        : activeCell.row;
+      startEditing(physicalRow, activeCell.col, activeCell.row, cellVal);
     } else if (e.key === 'PageDown') {
       e.preventDefault();
       const jump = Math.floor(containerHeight / ROW_HEIGHT);
@@ -879,8 +1117,6 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
     return columnWidths.reduce((acc, w) => acc + w, 68); // 68px for fixed row index column
   }, [columnWidths]);
 
-// UPDATE 2026-08-26: [ライト/ダーク両対応テーブルレンダリング]
-// なぜ: 無効な light: 構文を除去し、ライトモード（デフォルト）と dark: バリアントによるスタイリングを完全適用するため
   return (
     <div
       id="qu-table-container"
@@ -924,9 +1160,12 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
             # (行)
           </div>
 
-          {/* 各カラムヘッダー */}
-          {metadata.headers.map((header, colIdx) => {
+          {/* 各カラムヘッダー（可視列 renderStartCol 〜 renderEndCol のみ描画） */}
+          {Array.from({ length: renderEndCol - renderStartCol }, (_, idx) => {
+            const colIdx = renderStartCol + idx;
+            const header = metadata.headers[colIdx];
             const width = columnWidths[colIdx] || DEFAULT_COL_WIDTH;
+            const left = columnOffsets[colIdx];
             const isSorted = sortConfig.column === colIdx;
             const isHeaderless = !hasHeader || header === 'NULL';
             const displayHeader = isHeaderless ? String(colIdx + 1) : header;
@@ -935,8 +1174,15 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
               <div
                 key={colIdx}
                 id={`header-col-${colIdx}`}
-                style={{ width: `${width}px`, minWidth: `${width}px` }}
-                className="relative flex items-center justify-between px-3 bg-[#E5E7EB] dark:bg-[#1A1D23] hover:bg-gray-200 dark:hover:bg-[#242A35] border-r border-gray-300 dark:border-[#2D3139] transition-colors group cursor-pointer"
+                style={{
+                  position: 'absolute',
+                  left: `${left}px`,
+                  width: `${width}px`,
+                  minWidth: `${width}px`,
+                  top: 0,
+                  height: '32px',
+                }}
+                className="flex items-center justify-between px-3 bg-[#E5E7EB] dark:bg-[#1A1D23] hover:bg-gray-200 dark:hover:bg-[#242A35] border-r border-gray-300 dark:border-[#2D3139] transition-colors group cursor-pointer"
                 onClick={() => onSortColumn(colIdx)}
                 onContextMenu={(e) => {
                   e.preventDefault();
@@ -988,232 +1234,242 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
           })}
         </div>
 
-        {/* 仮想レンダリング行の描画枠 */}
-        <div
-          style={{
-            transform: `translateY(${sliceStartRow * ROW_HEIGHT}px)`,
-            position: 'absolute',
-            top: '32px',
-            left: 0,
-            width: `${totalTableWidth}px`,
-          }}
-        >
-          {visibleRows.map((rowCells, sliceIdx) => {
-            const virtualRowIdx = sliceStartRow + sliceIdx;
-            if (virtualRowIdx >= effectiveTotalRows) return null;
+        {/* 仮想レンダリング行の描画（各行・各セルを2次元絶対座標配置し、ブラウザの合成スクロールと100%完全同期） */}
+        {Array.from({ length: renderRowCount }, (_, i) => {
+          const virtualRowIdx = renderStartRow + i;
+          if (virtualRowIdx >= effectiveTotalRows) return null;
 
-            const physicalRowIdx = originalRowIndices[sliceIdx] !== undefined
-              ? originalRowIndices[sliceIdx]
-              : virtualRowIdx;
-            const displayRowNumber = physicalRowIdx + 1;
-            const targetRowIndex = filterMode ? virtualRowIdx : physicalRowIdx;
-            const thisRowSelected = isRowSelected(targetRowIndex);
+          const physicalRowIdx = filterMode && filterIndices
+            ? (filterIndices[virtualRowIdx] !== undefined ? filterIndices[virtualRowIdx] : virtualRowIdx)
+            : virtualRowIdx;
+          const displayRowNumber = physicalRowIdx + 1;
+          const targetRowIndex = filterMode ? virtualRowIdx : physicalRowIdx;
+          const thisRowSelected = isRowSelected(targetRowIndex);
 
-            return (
+          // ローカル広域チャンクキャッシュから即座に同期取得 (0ms描画)
+          const rowCells = rowCacheRef.current.get(virtualRowIdx) || [];
+
+          return (
+            <div
+              key={`${hasHeader ? 'hdr' : 'nohdr'}-${virtualRowIdx}`}
+              id={`row-${virtualRowIdx}`}
+              style={{
+                position: 'absolute',
+                top: `${virtualRowIdx * ROW_HEIGHT + 32}px`,
+                left: 0,
+                width: `${totalTableWidth}px`,
+                height: `${ROW_HEIGHT}px`,
+              }}
+              className={`flex border-b transition-colors ${
+                thisRowSelected
+                  ? 'bg-blue-100/80 dark:bg-blue-950/40 border-blue-300 dark:border-[#2563EB]/50'
+                  : virtualRowIdx % 2 === 0
+                  ? 'bg-white dark:bg-[#0F1115] border-gray-200 dark:border-[#1E232B]'
+                  : 'bg-gray-50/70 dark:bg-[#13161C] border-gray-200 dark:border-[#1E232B]'
+              } hover:bg-blue-50/80 dark:hover:bg-[#1A202C]`}
+            >
+              {/* 行番号セル */}
               <div
-                key={`${hasHeader ? 'hdr' : 'nohdr'}-${virtualRowIdx}`}
-                id={`row-${virtualRowIdx}`}
-                style={{ height: `${ROW_HEIGHT}px` }}
-                className={`flex border-b transition-colors ${
-                  thisRowSelected
-                    ? 'bg-blue-100/80 dark:bg-blue-950/40 border-blue-300 dark:border-[#2563EB]/50'
-                    : virtualRowIdx % 2 === 0
-                    ? 'bg-white dark:bg-[#0F1115] border-gray-200 dark:border-[#1E232B]'
-                    : 'bg-gray-50/70 dark:bg-[#13161C] border-gray-200 dark:border-[#1E232B]'
-                } hover:bg-blue-50/80 dark:hover:bg-[#1A202C]`}
-              >
-                {/* 行番号セル */}
-                <div
-                  id={`row-num-${virtualRowIdx}`}
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    if (e.button !== 0) return;
-                    if (e.shiftKey && (selectionAnchor || activeCell)) {
-                      const anchor = selectionAnchor || activeCell!;
-                      setSelectedRange({
-                        startRow: anchor.row,
-                        startCol: 0,
-                        endRow: targetRowIndex,
-                        endCol: metadata.totalCols - 1,
-                      });
-                      setActiveCell({ row: targetRowIndex, col: 0 });
-                    } else {
-                      const nextCoord = { row: targetRowIndex, col: 0 };
-                      setActiveCell(nextCoord);
-                      setSelectionAnchor(nextCoord);
-                      setSelectedRange({
-                        startRow: targetRowIndex,
-                        startCol: 0,
-                        endRow: targetRowIndex,
-                        endCol: metadata.totalCols - 1,
-                      });
-                    }
-                    if (onActiveCellChange) {
-                      const firstVal = rowCells[0] ?? '';
-                      onActiveCellChange({ row: targetRowIndex, col: 0 }, firstVal);
-                    }
-                  }}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setContextMenuTarget({
-                      type: 'row',
-                      rowIndex: physicalRowIdx,
-                      colIndex: activeCell ? activeCell.col : 0,
-                      x: e.clientX,
-                      y: e.clientY,
+                id={`row-num-${virtualRowIdx}`}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  if (e.button !== 0) return;
+                  e.preventDefault();
+                  if (e.shiftKey && (selectionAnchor || activeCell)) {
+                    const anchor = selectionAnchor || activeCell!;
+                    setSelectedRange({
+                      startRow: anchor.row,
+                      startCol: 0,
+                      endRow: targetRowIndex,
+                      endCol: metadata.totalCols - 1,
                     });
-                  }}
-                  className={`w-[68px] min-w-[68px] sticky left-0 z-20 flex items-center justify-end px-2 text-[10px] select-none tracking-tighter cursor-pointer transition-colors ${
-                    thisRowSelected
-                      ? 'bg-blue-600 text-white font-bold border-r-2 border-r-blue-700 dark:border-r-blue-400 shadow-[2px_0_6px_rgba(37,99,235,0.3)]'
-                      : 'bg-[#F3F4F6] dark:bg-[#16191E] border-r border-gray-300 dark:border-[#2D3139] text-gray-600 dark:text-gray-500 font-semibold shadow-[2px_0_4px_rgba(0,0,0,0.06)] hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-300'
-                  }`}
-                  title={`物理行: ${displayRowNumber.toLocaleString()} 行目 (クリックで行を選択, 右クリックで行操作)`}
-                >
-                  {displayRowNumber.toLocaleString()}
-                </div>
-
-                {/* 各セル */}
-                {metadata.headers.map((_, colIdx) => {
-                  const width = columnWidths[colIdx] || DEFAULT_COL_WIDTH;
-                  const cellValue = rowCells[colIdx] ?? '';
-                  const isActive =
-                    activeCell?.row === targetRowIndex &&
-                    activeCell?.col === colIdx;
-                  const inRange = isCellInRange(targetRowIndex, colIdx);
-                  const isEditing =
-                    editingCell?.row === physicalRowIdx && editingCell?.col === colIdx;
-                  const isCurrentSearchMatch =
-                    currentSearchMatch?.row === physicalRowIdx &&
-                    currentSearchMatch?.col === colIdx;
-                  const isModified = modifiedCells
-                    ? modifiedCells.has(`${physicalRowIdx},${colIdx}`)
-                    : false;
-                  
-                  let hasKeywordMatch = false;
-                  if (searchQuery.trim().length > 0) {
-                    if (searchUseRegex) {
-                      try {
-                        const r = new RegExp(searchQuery, searchCaseSensitive ? '' : 'i');
-                        hasKeywordMatch = r.test(cellValue);
-                      } catch {
-                        hasKeywordMatch = false;
-                      }
-                    } else {
-                      hasKeywordMatch = searchCaseSensitive
-                        ? cellValue.includes(searchQuery)
-                        : cellValue.toLowerCase().includes(searchQuery.toLowerCase());
-                    }
+                    setActiveCell({ row: targetRowIndex, col: 0 });
+                  } else {
+                    const nextCoord = { row: targetRowIndex, col: 0 };
+                    setActiveCell(nextCoord);
+                    setSelectionAnchor(nextCoord);
+                    setSelectedRange({
+                      startRow: targetRowIndex,
+                      startCol: 0,
+                      endRow: targetRowIndex,
+                      endCol: metadata.totalCols - 1,
+                    });
                   }
-
-                  return (
-                    <div
-                      key={colIdx}
-                      id={`cell-${virtualRowIdx}-${colIdx}`}
-                      style={{ width: `${width}px`, minWidth: `${width}px` }}
-                      onMouseDown={(e) => {
-                        if (e.button !== 0) return;
-                        if (e.shiftKey && activeCell) {
-                          const anchor = selectionAnchor || activeCell;
-                          setSelectedRange({
-                            startRow: anchor.row,
-                            startCol: anchor.col,
-                            endRow: targetRowIndex,
-                            endCol: colIdx,
-                          });
-                          setActiveCell({ row: targetRowIndex, col: colIdx });
-                        } else {
-                          const nextCoord = { row: targetRowIndex, col: colIdx };
-                          setActiveCell(nextCoord);
-                          setSelectionAnchor(nextCoord);
-                          setSelectedRange({
-                            startRow: targetRowIndex,
-                            startCol: colIdx,
-                            endRow: targetRowIndex,
-                            endCol: colIdx,
-                          });
-                          setIsSelecting(true);
-                        }
-                        if (onActiveCellChange) {
-                          onActiveCellChange({ row: targetRowIndex, col: colIdx }, cellValue);
-                        }
-                      }}
-                      onMouseEnter={() => {
-                        if (isSelecting && selectionAnchor) {
-                          setSelectedRange({
-                            startRow: selectionAnchor.row,
-                            startCol: selectionAnchor.col,
-                            endRow: targetRowIndex,
-                            endCol: colIdx,
-                          });
-                          setActiveCell({ row: targetRowIndex, col: colIdx });
-                        }
-                      }}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setContextMenuTarget({
-                          type: 'cell',
-                          rowIndex: physicalRowIdx,
-                          colIndex: colIdx,
-                          x: e.clientX,
-                          y: e.clientY,
-                        });
-                      }}
-                      onDoubleClick={() => startEditing(physicalRowIdx, colIdx, sliceIdx, cellValue)}
-                      title={isModified ? `未保存の編集セル (保存するまで強調表示): "${cellValue}" (右クリックで行・列操作)` : undefined}
-                      className={`relative px-2.5 flex items-center border-r border-gray-200 dark:border-[#1E232B] truncate cursor-cell transition-colors ${
-                        isActive
-                          ? isModified
-                            ? 'ring-2 ring-blue-500 bg-amber-200/95 dark:bg-amber-900/70 z-10 text-amber-950 dark:text-amber-100 font-bold border-l-2 border-l-amber-500'
-                            : 'ring-2 ring-blue-500 bg-blue-200/95 dark:bg-blue-900/60 z-10 text-blue-950 dark:text-white font-semibold'
-                          : isModified
-                          ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-950 dark:text-amber-200 border-l-2 border-l-amber-500 font-semibold shadow-xs'
-                          : inRange
-                          ? 'bg-blue-100/70 dark:bg-blue-600/30 border-blue-400/40 text-blue-900 dark:text-blue-100'
-                          : thisRowSelected
-                          ? 'text-blue-950 dark:text-gray-100'
-                          : 'text-gray-800 dark:text-gray-300'
-                      } ${
-                        isCurrentSearchMatch
-                          ? 'bg-amber-200/90 dark:bg-amber-500/25 ring-2 ring-amber-500 dark:ring-amber-400 z-10 shadow-xs'
-                          : hasKeywordMatch
-                          ? 'bg-yellow-100 dark:bg-amber-500/15'
-                          : ''
-                      }`}
-                    >
-                      {/* 未保存編集セル右上三角マーカー */}
-                      {isModified && !isEditing && (
-                        <span
-                          className="absolute top-0 right-0 w-2.5 h-2.5 overflow-hidden pointer-events-none z-10"
-                          title="未保存の編集セル"
-                        >
-                          <span className="absolute top-0 right-0 w-0 h-0 border-t-[7px] border-r-[7px] border-t-amber-500 border-r-amber-500 border-b-transparent border-l-transparent" />
-                        </span>
-                      )}
-
-                      {isEditing ? (
-                        <input
-                          ref={editInputRef}
-                          type="text"
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onBlur={commitEdit}
-                          className="absolute inset-0 w-full h-full bg-white dark:bg-[#0F1115] text-gray-900 dark:text-white font-mono text-xs px-2.5 border-2 border-blue-500 focus:outline-none z-20"
-                        />
-                      ) : (
-                        <span className="truncate select-text">
-                          {renderHighlightedText(cellValue, searchQuery, searchCaseSensitive, searchUseRegex)}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
+                  if (onActiveCellChange) {
+                    const firstVal = rowCells[0] ?? '';
+                    onActiveCellChange({ row: targetRowIndex, col: 0 }, firstVal);
+                  }
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setContextMenuTarget({
+                    type: 'row',
+                    rowIndex: physicalRowIdx,
+                    colIndex: activeCell ? activeCell.col : 0,
+                    x: e.clientX,
+                    y: e.clientY,
+                  });
+                }}
+                className={`w-[68px] min-w-[68px] sticky left-0 z-20 flex items-center justify-end px-2 text-[10px] select-none tracking-tighter cursor-pointer transition-colors ${
+                  thisRowSelected
+                    ? 'bg-blue-600 text-white font-bold border-r-2 border-r-blue-700 dark:border-r-blue-400 shadow-[2px_0_6px_rgba(37,99,235,0.3)]'
+                    : 'bg-[#F3F4F6] dark:bg-[#16191E] border-r border-gray-300 dark:border-[#2D3139] text-gray-600 dark:text-gray-500 font-semibold shadow-[2px_0_4px_rgba(0,0,0,0.06)] hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-300'
+                }`}
+                title={`物理行: ${displayRowNumber.toLocaleString()} 行目 (クリックで行を選択, 右クリックで行操作)`}
+              >
+                {displayRowNumber.toLocaleString()}
               </div>
-            );
-          })}
-        </div>
+
+              {/* 各セル（可視列 renderStartCol 〜 renderEndCol のみ描画） */}
+              {Array.from({ length: renderEndCol - renderStartCol }, (_, idx) => {
+                const colIdx = renderStartCol + idx;
+                const width = columnWidths[colIdx] || DEFAULT_COL_WIDTH;
+                const left = columnOffsets[colIdx];
+                const cellValue = rowCells[colIdx] ?? '';
+                const isActive =
+                  activeCell?.row === targetRowIndex &&
+                  activeCell?.col === colIdx;
+                const inRange = isCellInRange(targetRowIndex, colIdx);
+                const isEditing =
+                  editingCell?.row === physicalRowIdx && editingCell?.col === colIdx;
+                const isCurrentSearchMatch =
+                  currentSearchMatch?.row === physicalRowIdx &&
+                  currentSearchMatch?.col === colIdx;
+                const isModified = modifiedCells
+                  ? modifiedCells.has(`${physicalRowIdx},${colIdx}`)
+                  : false;
+                
+                let hasKeywordMatch = false;
+                if (searchQuery.trim().length > 0) {
+                  if (searchUseRegex) {
+                    try {
+                      const r = new RegExp(searchQuery, searchCaseSensitive ? '' : 'i');
+                      hasKeywordMatch = r.test(cellValue);
+                    } catch {
+                      hasKeywordMatch = false;
+                    }
+                  } else {
+                    hasKeywordMatch = searchCaseSensitive
+                      ? cellValue.includes(searchQuery)
+                      : cellValue.toLowerCase().includes(searchQuery.toLowerCase());
+                  }
+                }
+
+                return (
+                  <div
+                    key={colIdx}
+                    id={`cell-${virtualRowIdx}-${colIdx}`}
+                    style={{
+                      position: 'absolute',
+                      left: `${left}px`,
+                      width: `${width}px`,
+                      minWidth: `${width}px`,
+                      top: 0,
+                      height: `${ROW_HEIGHT}px`,
+                    }}
+                    onMouseDown={(e) => {
+                      if (e.button !== 0) return;
+                      e.preventDefault();
+                      if (e.shiftKey && activeCell) {
+                        const anchor = selectionAnchor || activeCell;
+                        setSelectedRange({
+                          startRow: anchor.row,
+                          startCol: anchor.col,
+                          endRow: targetRowIndex,
+                          endCol: colIdx,
+                        });
+                        setActiveCell({ row: targetRowIndex, col: colIdx });
+                      } else {
+                        const nextCoord = { row: targetRowIndex, col: colIdx };
+                        setActiveCell(nextCoord);
+                        setSelectionAnchor(nextCoord);
+                        setSelectedRange({
+                          startRow: targetRowIndex,
+                          startCol: colIdx,
+                          endRow: targetRowIndex,
+                          endCol: colIdx,
+                        });
+                        setIsSelecting(true);
+                      }
+                      if (onActiveCellChange) {
+                        onActiveCellChange({ row: targetRowIndex, col: colIdx }, cellValue);
+                      }
+                    }}
+                    onMouseEnter={() => {
+                      if (isSelecting && selectionAnchor) {
+                        setSelectedRange({
+                          startRow: selectionAnchor.row,
+                          startCol: selectionAnchor.col,
+                          endRow: targetRowIndex,
+                          endCol: colIdx,
+                        });
+                        setActiveCell({ row: targetRowIndex, col: colIdx });
+                      }
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setContextMenuTarget({
+                        type: 'cell',
+                        rowIndex: physicalRowIdx,
+                        colIndex: colIdx,
+                        x: e.clientX,
+                        y: e.clientY,
+                      });
+                    }}
+                    onDoubleClick={() => startEditing(physicalRowIdx, colIdx, virtualRowIdx, cellValue)}
+                    title={isModified ? `未保存の編集セル (保存するまで強調表示): "${cellValue}" (右クリックで行・列操作)` : undefined}
+                    className={`relative px-2.5 flex items-center border-r border-gray-200 dark:border-[#1E232B] truncate cursor-cell select-none transition-colors ${
+                      isActive
+                        ? isModified
+                          ? 'ring-2 ring-blue-500 bg-amber-200/95 dark:bg-amber-900/70 z-10 text-amber-950 dark:text-amber-100 font-bold border-l-2 border-l-amber-500'
+                          : 'ring-2 ring-blue-500 bg-blue-200/95 dark:bg-blue-900/60 z-10 text-blue-950 dark:text-white font-semibold'
+                        : isModified
+                        ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-950 dark:text-amber-200 border-l-2 border-l-amber-500 font-semibold shadow-xs'
+                        : inRange
+                        ? 'bg-blue-100/70 dark:bg-blue-600/30 border-blue-400/40 text-blue-900 dark:text-blue-100'
+                        : thisRowSelected
+                        ? 'text-blue-950 dark:text-gray-100'
+                        : 'text-gray-800 dark:text-gray-300'
+                    } ${
+                      isCurrentSearchMatch
+                        ? 'bg-amber-200/90 dark:bg-amber-500/25 ring-2 ring-amber-500 dark:ring-amber-400 z-10 shadow-xs'
+                        : hasKeywordMatch
+                        ? 'bg-yellow-100 dark:bg-amber-500/15'
+                        : ''
+                    }`}
+                  >
+                    {/* 未保存編集セル右上三角マーカー */}
+                    {isModified && !isEditing && (
+                      <span
+                        className="absolute top-0 right-0 w-2.5 h-2.5 overflow-hidden pointer-events-none z-10"
+                        title="未保存の編集セル"
+                      >
+                        <span className="absolute top-0 right-0 w-0 h-0 border-t-[7px] border-r-[7px] border-t-amber-500 border-r-amber-500 border-b-transparent border-l-transparent" />
+                      </span>
+                    )}
+
+                    {isEditing ? (
+                      <input
+                        ref={editInputRef}
+                        type="text"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onBlur={commitEdit}
+                        className="absolute inset-0 w-full h-full bg-white dark:bg-[#0F1115] text-gray-900 dark:text-white font-mono text-xs px-2.5 border-2 border-blue-500 focus:outline-none z-20 select-text"
+                      />
+                    ) : (
+                      <span className="truncate select-none pointer-events-none">
+                        {renderHighlightedText(cellValue, searchQuery, searchCaseSensitive, searchUseRegex)}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
 
       {/* 行・列コンテキストメニュー */}
@@ -1221,6 +1477,7 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
         <TableContextMenu
           target={contextMenuTarget}
           onClose={() => setContextMenuTarget(null)}
+          onCopy={handleCopyTsv}
           onInsertRowAbove={(r) => onInsertRow && onInsertRow(r)}
           onInsertRowBelow={(r) => onInsertRow && onInsertRow(r + 1)}
           onDuplicateRow={(r) => onDuplicateRow && onDuplicateRow(r)}
@@ -1234,3 +1491,4 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
     </div>
   );
 };
+

@@ -12,6 +12,7 @@ import { HelpModal } from './components/HelpModal';
 import { SaveModal } from './components/SaveModal';
 import { SplitModal } from './components/SplitModal';
 import { FindReplaceModal } from './components/FindReplaceModal';
+import { FolderOpen, FileSpreadsheet } from 'lucide-react';
 import {
   FileMetadata,
   SupportedEncoding,
@@ -26,8 +27,7 @@ import {
   RecentFile,
   SelectionStats,
 } from './types/csv';
-import { TauriBridge } from './services/tauriBridge';
-import { generateBenchmarkCsv } from './utils/sampleData';
+import { TauriBridge, isTauriEnv } from './services/tauriBridge';
 import { useTheme } from './hooks/useTheme';
 import { getRecentFiles, addRecentFile, clearRecentFiles } from './utils/recentFiles';
 
@@ -46,6 +46,7 @@ export default function App() {
   const [jumpToRowTrigger, setJumpToRowTrigger] = useState<number | null>(null);
   const [recentFiles, setRecentFiles] = useState<RecentFile[]>([]);
   const [selectionStats, setSelectionStats] = useState<SelectionStats | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // UPDATE 2026-08-26: 表示モード ('table' | 'text') & 未保存セル追跡 Set
   const [viewMode, setViewMode] = useState<ViewMode>('table');
@@ -85,34 +86,10 @@ export default function App() {
     return Array.from(rowSet).sort((a, b) => a - b);
   }, [searchState.matches]);
 
-  // アプリ起動直後に即座にテーブルを表示（10,000行ベンチマークデータ）および履歴読込
+  // アプリ起動時の履歴読込（サンプルデータは自動読込しない）
   useEffect(() => {
     setRecentFiles(getRecentFiles());
-    loadBenchmarkData(10000, false);
   }, []);
-
-  const loadBenchmarkData = async (count: number, isTsv: boolean = false) => {
-    try {
-      const csvText = generateBenchmarkCsv(count, isTsv);
-      const fileName = isTsv ? `benchmark_dataset_${count}rows.tsv` : `benchmark_dataset_${count}rows.csv`;
-      const meta = await TauriBridge.openFromText(csvText, fileName, isTsv ? '\t' : ',');
-      setMetadata(meta);
-      setHasHeader(meta.hasHeader ?? true);
-      setActiveCell({ row: 0, col: 0 });
-      setModifiedCells(new Set());
-      setSearchState((prev) => ({
-        ...prev,
-        query: '',
-        matches: [],
-        currentIndex: 0,
-        regexError: null,
-        filterMode: false,
-      }));
-      setJumpToRowTrigger(0);
-    } catch (err) {
-      console.error('Failed to load benchmark data:', err);
-    }
-  };
 
   // ファイルオープン
   const handleOpenFile = async (file: File) => {
@@ -151,36 +128,46 @@ export default function App() {
     }
   };
 
+  // ファイルパスからの直接オープン (TauriネイティブD&Dおよび履歴再読込用)
+  const handleOpenFilePath = async (filePath: string) => {
+    try {
+      const meta = await TauriBridge.openFilePath(filePath);
+      setMetadata(meta);
+      setHasHeader(meta.hasHeader ?? true);
+      setActiveCell({ row: 0, col: 0 });
+      setModifiedCells(new Set());
+      setSearchState((prev) => ({
+        ...prev,
+        query: '',
+        matches: [],
+        currentIndex: 0,
+        regexError: null,
+        filterMode: false,
+      }));
+      setJumpToRowTrigger(0);
+
+      // 生テキストも即座に同期取得
+      try {
+        const text = await TauriBridge.getCurrentText(meta.lineEnding, meta.delimiter);
+        setRawText(text || '');
+      } catch (_) {}
+
+      const updated = addRecentFile({
+        name: meta.fileName,
+        path: filePath,
+        size: meta.fileSize,
+        encoding: meta.encoding,
+      });
+      setRecentFiles(updated);
+    } catch (err) {
+      console.error('Failed to open file by path:', err);
+    }
+  };
+
   // 最近開いたファイルの再読込
   const handleOpenRecentFile = async (recent: RecentFile) => {
-    try {
-      if (recent.path) {
-        const meta = await TauriBridge.openFilePath(recent.path);
-        setMetadata(meta);
-        setHasHeader(meta.hasHeader ?? true);
-        setActiveCell({ row: 0, col: 0 });
-        setModifiedCells(new Set());
-        setSearchState((prev) => ({
-          ...prev,
-          query: '',
-          matches: [],
-          currentIndex: 0,
-          regexError: null,
-          filterMode: false,
-        }));
-        setJumpToRowTrigger(0);
-
-        // 生テキストも即座に同期取得
-        try {
-          const text = await TauriBridge.getCurrentText(meta.lineEnding, meta.delimiter);
-          setRawText(text || '');
-        } catch (_) {}
-
-        const updated = addRecentFile(recent);
-        setRecentFiles(updated);
-      }
-    } catch (err) {
-      console.error('Failed to reopen recent file:', err);
+    if (recent.path) {
+      await handleOpenFilePath(recent.path);
     }
   };
 
@@ -872,14 +859,40 @@ export default function App() {
 
   // グローバルドラッグ＆ドロップおよびキーボードショートカット (F1, Ctrl+S, Ctrl+O, Ctrl+F 等)
   useEffect(() => {
+    let dragCounter = 0;
+
+    const handleDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter++;
+      if (e.dataTransfer && e.dataTransfer.types.includes('Files')) {
+        setIsDragging(true);
+      }
+    };
+
     const handleDragOver = (e: DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = 'copy';
+      }
+    };
+
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter--;
+      if (dragCounter <= 0) {
+        dragCounter = 0;
+        setIsDragging(false);
+      }
     };
 
     const handleDrop = (e: DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
+      dragCounter = 0;
+      setIsDragging(false);
       if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
         handleOpenFile(e.dataTransfer.files[0]);
       }
@@ -911,14 +924,48 @@ export default function App() {
       }
     };
 
+    window.addEventListener('dragenter', handleDragEnter);
     window.addEventListener('dragover', handleDragOver);
+    window.addEventListener('dragleave', handleDragLeave);
     window.addEventListener('drop', handleDrop);
     window.addEventListener('keydown', handleGlobalKeyDown);
 
+    // Tauri デスクトップ環境用のネイティブファイルドロップイベント登録
+    let unlistenTauriDrop: (() => void) | null = null;
+    if (isTauriEnv()) {
+      import('@tauri-apps/api/webview')
+        .then(({ getCurrentWebview }) => {
+          return getCurrentWebview().onDragDropEvent((event) => {
+            if (event.payload.type === 'enter' || event.payload.type === 'over') {
+              setIsDragging(true);
+            } else if (event.payload.type === 'drop') {
+              setIsDragging(false);
+              const paths = event.payload.paths;
+              if (paths && paths.length > 0 && paths[0]) {
+                handleOpenFilePath(paths[0]);
+              }
+            } else if (event.payload.type === 'leave') {
+              setIsDragging(false);
+            }
+          });
+        })
+        .then((unlisten) => {
+          unlistenTauriDrop = unlisten;
+        })
+        .catch((err) => {
+          console.warn('Failed to listen to Tauri dragDropEvent:', err);
+        });
+    }
+
     return () => {
+      window.removeEventListener('dragenter', handleDragEnter);
       window.removeEventListener('dragover', handleDragOver);
+      window.removeEventListener('dragleave', handleDragLeave);
       window.removeEventListener('drop', handleDrop);
       window.removeEventListener('keydown', handleGlobalKeyDown);
+      if (unlistenTauriDrop) {
+        unlistenTauriDrop();
+      }
     };
   }, [metadata, viewMode]);
 
@@ -1101,7 +1148,6 @@ export default function App() {
         metadata={metadata}
         alwaysOnTop={alwaysOnTop}
         onToggleAlwaysOnTop={() => setAlwaysOnTop(!alwaysOnTop)}
-        onLoadBenchmark={loadBenchmarkData}
         themeMode={themeMode}
         onThemeChange={setThemeMode}
         onOpenHelp={() => setIsHelpOpen(true)}
@@ -1184,8 +1230,43 @@ export default function App() {
           />
         )
       ) : (
-        <div className="flex-1 flex items-center justify-center bg-white dark:bg-[#0F1115] text-gray-500 text-sm">
-          ファイルをドラッグ＆ドロップしてください
+        <div className="flex-1 flex flex-col items-center justify-center bg-white dark:bg-[#0F1115] text-gray-500 dark:text-gray-400 p-8 select-none">
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+                handleOpenFile(e.dataTransfer.files[0]);
+              }
+            }}
+            className="max-w-md w-full border-2 border-dashed border-gray-300 dark:border-[#2D3139] rounded-2xl p-10 flex flex-col items-center text-center hover:border-blue-500/60 dark:hover:border-blue-500/60 transition-colors cursor-pointer"
+            onClick={() => document.getElementById('btn-open-file')?.click()}
+          >
+            <div className="p-4 bg-blue-50 dark:bg-blue-950/40 rounded-full text-blue-600 dark:text-blue-400 mb-4">
+              <FileSpreadsheet className="w-10 h-10" />
+            </div>
+            <h2 className="text-base font-bold text-gray-800 dark:text-gray-200 mb-1">
+              CSV / TSV ファイルを開く
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
+              ファイルをここにドラッグ＆ドロップするか、<br />下のボタンからファイルを選択してください。
+            </p>
+            <button
+              type="button"
+              onClick={() => document.getElementById('btn-open-file')?.click()}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center gap-2"
+            >
+              <FolderOpen className="w-4 h-4" />
+              <span>ファイルを選択</span>
+            </button>
+            <span className="text-[11px] text-gray-400 dark:text-gray-500 mt-4">
+              ショートカット: Ctrl + O
+            </span>
+          </div>
         </div>
       )}
 
@@ -1232,6 +1313,26 @@ export default function App() {
         onReplaceCurrent={handleReplaceCurrentInModal}
         onReplaceAll={handleReplaceAllInModal}
       />
+
+      {/* 9. ドラッグ＆ドロップ用フローティングオーバーレイ */}
+      {isDragging && (
+        <div
+          id="dnd-overlay"
+          className="fixed inset-0 z-50 bg-blue-600/20 dark:bg-blue-600/30 backdrop-blur-xs border-4 border-dashed border-blue-500 flex flex-col items-center justify-center pointer-events-none animate-in fade-in duration-150"
+        >
+          <div className="p-6 bg-white dark:bg-[#1A1D23] rounded-2xl shadow-2xl border border-blue-400 flex flex-col items-center gap-3">
+            <div className="p-4 bg-blue-50 dark:bg-blue-950/60 rounded-full text-blue-600 dark:text-blue-400 animate-bounce">
+              <FileSpreadsheet className="w-10 h-10" />
+            </div>
+            <span className="text-base font-bold text-gray-900 dark:text-white font-mono">
+              ファイルをここにドロップして開く
+            </span>
+            <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+              CSV / TSV ファイルを瞬時に高速プレビューします
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

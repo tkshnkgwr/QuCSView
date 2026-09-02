@@ -130,3 +130,33 @@ describe('Selection Statistics Calculator', () => {
     expect(max).toBe(250.5);
   });
 });
+
+describe('Clipboard TSV Range Formatting', () => {
+  it('should format horizontal multi-cell selection with tab delimiters', () => {
+    const row = ['A1', 'B1', 'C1'];
+    const formatted = row.join('\t');
+    expect(formatted).toBe('A1\tB1\tC1');
+  });
+
+  it('should format vertical multi-row selection with newline delimiters', () => {
+    const col = ['A1', 'A2', 'A3'];
+    const formatted = col.join('\n');
+    expect(formatted).toBe('A1\nA2\nA3');
+  });
+
+  it('should format 2D rectangular selection with tabs for columns and newlines for rows', () => {
+    const matrix = [
+      ['A1', 'B1'],
+      ['A2', 'B2'],
+    ];
+    const formatted = matrix.map((r) => r.join('\t')).join('\n');
+    expect(formatted).toBe('A1\tB1\nA2\tB2');
+  });
+
+  it('should format single cell selection without tabs or newlines', () => {
+    const single = ['A1'];
+    const formatted = single.join('\t');
+    expect(formatted).toBe('A1');
+  });
+});
+

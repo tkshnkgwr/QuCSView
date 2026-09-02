@@ -1,6 +1,5 @@
-// UPDATE 2026-08-27: [カスタムタイトルバー ウィンドウ操作] 最小化・最大化・閉じるボタンの追加
 import React, { useState, useRef, useEffect } from 'react';
-import { Pin, PinOff, FileSpreadsheet, Sparkles, HelpCircle, Sun, Moon, Laptop, History, ChevronDown, Trash2, Clock, Minus, Square, X } from 'lucide-react';
+import { Pin, PinOff, FileSpreadsheet, HelpCircle, Sun, Moon, Laptop, History, ChevronDown, Trash2, Clock, Minus, Square, X } from 'lucide-react';
 import { FileMetadata, ThemeMode, RecentFile } from '../types/csv';
 import { isTauriEnv } from '../services/tauriBridge';
 
@@ -8,7 +7,6 @@ interface TitleBarProps {
   metadata: FileMetadata | null;
   alwaysOnTop: boolean;
   onToggleAlwaysOnTop: () => void;
-  onLoadBenchmark: (count: number, isTsv?: boolean) => void;
   themeMode: ThemeMode;
   onThemeChange: (mode: ThemeMode) => void;
   onOpenHelp: () => void;
@@ -21,7 +19,6 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   metadata,
   alwaysOnTop,
   onToggleAlwaysOnTop,
-  onLoadBenchmark,
   themeMode,
   onThemeChange,
   onOpenHelp,
@@ -200,28 +197,6 @@ export const TitleBar: React.FC<TitleBarProps> = ({
 
       {/* 右側: ツールボタン & ウィンドウ操作ボタン */}
       <div className="flex items-center gap-2 h-full">
-        {/* 🚀 ベンチマーク・サンプルデータ即時ロード */}
-        <div className="flex items-center gap-1" data-tauri-drag-region="false">
-          <button
-            id="btn-load-sample-10k"
-            onClick={() => onLoadBenchmark(10000, false)}
-            className="flex items-center gap-1 px-2 py-0.5 rounded bg-white dark:bg-[#0F1115] border border-gray-300 dark:border-[#2D3139] hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300 text-[10px] font-semibold transition-colors cursor-pointer shadow-2xs"
-            title="10,000行のサンプルCSVデータを即時生成してテーブルを描画"
-          >
-            <Sparkles className="w-3 h-3 text-amber-500" />
-            <span>1万行</span>
-          </button>
-          <button
-            id="btn-load-sample-100k"
-            onClick={() => onLoadBenchmark(100000, false)}
-            className="flex items-center gap-1 px-2 py-0.5 rounded bg-white dark:bg-[#0F1115] border border-gray-300 dark:border-[#2D3139] hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300 text-[10px] font-semibold transition-colors cursor-pointer shadow-2xs"
-            title="100,000行の大規模サンプルCSVデータを即時生成して超高速描画を体感"
-          >
-            <Sparkles className="w-3 h-3 text-amber-500" />
-            <span>10万行</span>
-          </button>
-        </div>
-
         {/* 🎨 テーマ切替 (ダーク / ライト / システム) */}
         <div className="flex items-center bg-white dark:bg-[#0F1115] border border-gray-300 dark:border-[#2D3139] rounded p-0.5 shadow-2xs" data-tauri-drag-region="false">
           <button

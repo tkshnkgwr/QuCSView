@@ -134,10 +134,29 @@ fn test_get_range_tsv() {
     let mut engine = CsvEngine::new();
     engine.open_file(temp_file.path(), None).unwrap();
 
+    // 2x2 矩形選択
     let (tsv, rows, cols) = engine.get_range_tsv(0, 1, 1, 2, None, None).unwrap();
     assert_eq!(rows, 2);
     assert_eq!(cols, 2);
     assert_eq!(tsv, "2\t3\n5\t6");
+
+    // 単一セル選択 (1x1)
+    let (single_tsv, s_rows, s_cols) = engine.get_range_tsv(0, 0, 0, 0, None, None).unwrap();
+    assert_eq!(s_rows, 1);
+    assert_eq!(s_cols, 1);
+    assert_eq!(single_tsv, "1");
+
+    // 横方向複数セル (1x3) -> タブ区切り
+    let (horiz_tsv, h_rows, h_cols) = engine.get_range_tsv(0, 0, 0, 2, None, None).unwrap();
+    assert_eq!(h_rows, 1);
+    assert_eq!(h_cols, 3);
+    assert_eq!(horiz_tsv, "1\t2\t3");
+
+    // 縦方向複数セル (3x1) -> 改行区切り
+    let (vert_tsv, v_rows, v_cols) = engine.get_range_tsv(0, 2, 0, 0, None, None).unwrap();
+    assert_eq!(v_rows, 3);
+    assert_eq!(v_cols, 1);
+    assert_eq!(vert_tsv, "1\n4\n7");
 }
 
 #[test]

@@ -24,6 +24,7 @@ export interface ContextMenuTarget {
 interface TableContextMenuProps {
   target: ContextMenuTarget | null;
   onClose: () => void;
+  onCopy?: () => void;
   onInsertRowAbove: (row: number) => void;
   onInsertRowBelow: (row: number) => void;
   onDuplicateRow: (row: number) => void;
@@ -37,6 +38,7 @@ interface TableContextMenuProps {
 export const TableContextMenu: React.FC<TableContextMenuProps> = ({
   target,
   onClose,
+  onCopy,
   onInsertRowAbove,
   onInsertRowBelow,
   onDuplicateRow,
@@ -86,6 +88,25 @@ export const TableContextMenu: React.FC<TableContextMenuProps> = ({
         <span>行: {(target.rowIndex + 1).toLocaleString()}</span>
         <span>列: {(target.colIndex + 1).toLocaleString()}</span>
       </div>
+
+      {/* コピー操作 */}
+      {onCopy && (
+        <div className="py-1 border-b border-gray-200 dark:border-[#2D3139]">
+          <button
+            onClick={() => {
+              onCopy();
+              onClose();
+            }}
+            className="w-full text-left px-3 py-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/30 flex items-center justify-between text-gray-800 dark:text-gray-200 font-medium"
+          >
+            <div className="flex items-center gap-2">
+              <Copy className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span>選択範囲をコピー</span>
+            </div>
+            <span className="text-[10px] text-gray-400 dark:text-gray-500 font-mono">Ctrl+C</span>
+          </button>
+        </div>
+      )}
 
       {/* 行操作 */}
       <div className="py-1">
