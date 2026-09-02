@@ -18,13 +18,13 @@ This project complies with **Semantic Versioning 2.0.0** (`MAJOR.MINOR.PATCH`, e
 
 When releasing a new version, the following files are synchronized:
 
-| Item                     | Location                                                               |
-| :----------------------- | :--------------------------------------------------------------------- |
-| Frontend Standard Version| [`package.json`](file:///c:/Users/632792/Documents/自作/QuCSView/package.json)                   |
-| Rust Crate Version       | [`src-tauri/Cargo.toml`](file:///c:/Users/632792/Documents/自作/QuCSView/src-tauri/Cargo.toml)  |
-| Tauri Application Config | [`src-tauri/tauri.conf.json`](file:///c:/Users/632792/Documents/自作/QuCSView/src-tauri/tauri.conf.json) |
-| Japanese Changelog       | [`docs/ja/CHANGELOG.md`](file:///c:/Users/632792/Documents/自作/QuCSView/docs/ja/CHANGELOG.md)   |
-| English Changelog        | [`docs/en/CHANGELOG.md`](file:///c:/Users/632792/Documents/自作/QuCSView/docs/en/CHANGELOG.md)   |
+| Item                     | Location                                  |
+| :----------------------- | :---------------------------------------- |
+| Frontend Standard Version| [`package.json`](../../package.json)      |
+| Rust Crate Version       | [`src-tauri/Cargo.toml`](../../src-tauri/Cargo.toml) |
+| Tauri Application Config | [`src-tauri/tauri.conf.json`](../../src-tauri/tauri.conf.json) |
+| Japanese Changelog       | [`docs/ja/CHANGELOG.md`](../ja/CHANGELOG.md) |
+| English Changelog        | [`docs/en/CHANGELOG.md`](CHANGELOG.md)    |
 
 ---
 

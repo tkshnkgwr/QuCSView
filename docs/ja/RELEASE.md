@@ -19,13 +19,13 @@
 
 バージョン更新時は、以下の Single Source of Truth に基づき更新を行います。
 
-| 項目                         | ファイル / 場所                                                       |
-| :--------------------------- | :-------------------------------------------------------------------- |
-| フロントエンド標準バージョン | [`package.json`](file:///c:/Users/632792/Documents/自作/QuCSView/package.json)                   |
-| Rust クレートバージョン      | [`src-tauri/Cargo.toml`](file:///c:/Users/632792/Documents/自作/QuCSView/src-tauri/Cargo.toml)  |
-| Tauri アプリケーション定義    | [`src-tauri/tauri.conf.json`](file:///c:/Users/632792/Documents/自作/QuCSView/src-tauri/tauri.conf.json) |
-| 日本語更新履歴               | [`docs/ja/CHANGELOG.md`](file:///c:/Users/632792/Documents/自作/QuCSView/docs/ja/CHANGELOG.md)   |
-| 英語更新履歴                 | [`docs/en/CHANGELOG.md`](file:///c:/Users/632792/Documents/自作/QuCSView/docs/en/CHANGELOG.md)   |
+| 項目                         | ファイル / 場所                           |
+| :--------------------------- | :---------------------------------------- |
+| フロントエンド標準バージョン | [`package.json`](../../package.json)      |
+| Rust クレートバージョン      | [`src-tauri/Cargo.toml`](../../src-tauri/Cargo.toml) |
+| Tauri アプリケーション定義    | [`src-tauri/tauri.conf.json`](../../src-tauri/tauri.conf.json) |
+| 日本語更新履歴               | [`docs/ja/CHANGELOG.md`](CHANGELOG.md)    |
+| 英語更新履歴                 | [`docs/en/CHANGELOG.md`](../en/CHANGELOG.md) |
 
 ---
 

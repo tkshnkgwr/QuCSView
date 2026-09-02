@@ -92,7 +92,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
     >
       <div
         id="qu-help-modal-dialog"
-        className="w-full max-w-3xl bg-white dark:bg-[#1A1D23] border border-gray-300 dark:border-[#374151] rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-[88vh] text-gray-900 dark:text-[#E5E7EB]"
+        className="w-full max-w-3xl h-[82vh] max-h-[720px] min-h-[500px] bg-white dark:bg-[#1A1D23] border border-gray-300 dark:border-[#374151] rounded-lg shadow-2xl overflow-hidden flex flex-col text-gray-900 dark:text-[#E5E7EB]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ヘッダー */}
