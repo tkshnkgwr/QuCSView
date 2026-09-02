@@ -1,6 +1,7 @@
 // UPDATE 2026-08-26: [ヘルプモーダルに「表/テキスト表示切替」及び「未保存セル色分け」の説明とショートカットを追加]
 // なぜ: 新規追加されたCSVプレビュー・テキスト表示切替ボタン、未保存セルのアンバー色ハイライト表示、および直接テキスト編集機能をユーザーが直感的に理解できるようにするため。
 import React, { useState, useEffect } from 'react';
+import { APP_VERSION } from '../version.ts';
 import {
   X,
   Keyboard,
@@ -106,7 +107,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                   QuCSView ヘルプ＆ガイド
                 </h2>
                 <span className="text-[10px] font-medium px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-600/30 rounded">
-                  v0.2.0 Desktop Engine
+                  v{APP_VERSION} Desktop Engine
                 </span>
               </div>
               <p className="text-[11px] text-gray-500 dark:text-gray-400">

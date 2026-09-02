@@ -29,6 +29,7 @@ const bumpType = args.find(arg => !arg.startsWith('--')) || 'patch';
 const packageJsonPath = path.join(rootDir, 'package.json');
 const cargoTomlPath = path.join(rootDir, 'src-tauri', 'Cargo.toml');
 const tauriConfPath = path.join(rootDir, 'src-tauri', 'tauri.conf.json');
+const versionTsPath = path.join(rootDir, 'src', 'version.ts');
 
 // 現在のバージョン取得
 const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
@@ -73,16 +74,21 @@ if (!isDryRun) {
   tauriConf.version = nextVersion;
   fs.writeFileSync(tauriConfPath, JSON.stringify(tauriConf, null, 2) + '\n', 'utf8');
   console.log(`✅ Updated src-tauri/tauri.conf.json -> ${nextVersion}`);
+
+  // 4. src/version.ts 更新
+  fs.writeFileSync(versionTsPath, `export const APP_VERSION = '${nextVersion}';\n`, 'utf8');
+  console.log(`✅ Updated src/version.ts -> ${nextVersion}`);
 } else {
   console.log(`[DRY-RUN] package.json -> ${nextVersion}`);
   console.log(`[DRY-RUN] src-tauri/Cargo.toml -> ${nextVersion}`);
   console.log(`[DRY-RUN] src-tauri/tauri.conf.json -> ${nextVersion}`);
+  console.log(`[DRY-RUN] src/version.ts -> ${nextVersion}`);
 }
 
 console.log('\n✨ バージョン同期が完了しました。');
 console.log('ボス、リリースを発行する場合は以下のコマンドを実行してください：');
 console.log('----------------------------------------------------');
-console.log(`git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json`);
+console.log(`git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json src/version.ts`);
 console.log(`git commit -m "release: bump version to v${nextVersion}"`);
 console.log(`git tag v${nextVersion}`);
 console.log(`git push origin main`);

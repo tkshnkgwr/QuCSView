@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [1.2.0] - 2026-09-02
+
 ### Added
 - **2D Virtual Scrolling Engine (Horizontal Column Virtualization) (`VirtualTable.tsx`)**:
   - Implemented 2D slice rendering (both rows and columns). On wide CSV files (200+ columns), only visible columns (10–15) are mounted to the DOM, slashing elements by 96.6% (from 22,050 to ~700).
