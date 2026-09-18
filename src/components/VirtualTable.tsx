@@ -655,13 +655,25 @@ export const VirtualTable: React.FC<VirtualTableProps> = ({
     [effectiveTotalRows]
   );
 
-  // フィルタやソート変更時はローカルキャッシュをクリア
+  // UPDATE 2026-09-18: [ヘッダ有無/ファイル変更時のキャッシュ無効化]
+  // なぜ: ヘッダOFF切替時やファイル再読込・行数変更時に古い行キャッシュが残留して1行目データが消失・空行化するのを防ぐため。
   useEffect(() => {
     requestIdRef.current++;
     rowCacheRef.current.clear();
     fetchingChunksRef.current.clear();
     setCacheVersion((v) => v + 1);
-  }, [filterMode, filterIndices, sortConfig]);
+  }, [
+    filterMode,
+    filterIndices,
+    sortConfig,
+    hasHeader,
+    metadata.filePath,
+    metadata.fileName,
+    metadata.totalRows,
+    metadata.totalCols,
+    metadata.encoding,
+    metadata.delimiter,
+  ]);
 
   // スクロール位置に基づくチャンク取得＆先回りプリフェッチ (進行方向3チャンク = 6,000行先読み)
   useEffect(() => {

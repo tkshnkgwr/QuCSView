@@ -217,7 +217,8 @@ impl CsvEngine {
             if self.mmap.is_some() && !self.line_offsets.is_empty() {
                 // ファイルから直接読む（空文字列も正確に保持）
                 if let Ok(first_line) = self.get_decoded_line_at(0) {
-                    output.push_str(&first_line);
+                    let trimmed = first_line.trim_end_matches(&['\r', '\n'][..]);
+                    output.push_str(trimmed);
                     output.push_str(le);
                 }
             } else if !self.raw_headers.is_empty() {

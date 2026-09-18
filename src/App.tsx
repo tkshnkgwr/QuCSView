@@ -893,6 +893,11 @@ export default function App() {
       e.stopPropagation();
       dragCounter = 0;
       setIsDragging(false);
+      // UPDATE 2026-09-18: Tauriデスクトップ環境では onDragDropEvent がファイルパス付きで直接開くため、
+      // HTML5 dropイベントによる重複オープン（パス喪失・レースコンディション）を防止
+      if (isTauriEnv()) {
+        return;
+      }
       if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
         handleOpenFile(e.dataTransfer.files[0]);
       }
@@ -1239,6 +1244,9 @@ export default function App() {
             onDrop={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              if (isTauriEnv()) {
+                return;
+              }
               if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
                 handleOpenFile(e.dataTransfer.files[0]);
               }

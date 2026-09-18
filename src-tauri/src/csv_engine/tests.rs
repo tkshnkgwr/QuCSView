@@ -306,3 +306,64 @@ fn test_header_toggle_with_empty_cells_preserves_empty_value() {
     assert!(!mem_raw_text.contains("Col 2"));
     assert!(mem_raw_text.starts_with("30,,1,20260727"));
 }
+
+#[test]
+fn test_get_raw_text_does_not_insert_empty_line_after_header() {
+    // CRLF ファイル
+    let csv_crlf = "ColA,ColB\r\nValA1,ValB1\r\nValA2,ValB2\r\n";
+    let temp_crlf = create_test_csv(csv_crlf);
+    let mut engine_crlf = CsvEngine::new();
+    engine_crlf.open_file(temp_crlf.path(), None).unwrap();
+
+    let raw_crlf = engine_crlf.get_raw_text(None);
+    let lines_crlf: Vec<&str> = raw_crlf.split("\r\n").collect();
+    assert_eq!(lines_crlf[0], "ColA,ColB");
+    assert_eq!(
+        lines_crlf[1], "ValA1,ValB1",
+        "Header must be directly followed by Row 1, not empty line"
+    );
+    assert_eq!(lines_crlf[2], "ValA2,ValB2");
+
+    // LF ファイル
+    let csv_lf = "ColA,ColB\nValA1,ValB1\nValA2,ValB2\n";
+    let temp_lf = create_test_csv(csv_lf);
+    let mut engine_lf = CsvEngine::new();
+    engine_lf.open_file(temp_lf.path(), None).unwrap();
+
+    let raw_lf = engine_lf.get_raw_text(None);
+    let lines_lf: Vec<&str> = raw_lf.split('\n').collect();
+    assert_eq!(lines_lf[0], "ColA,ColB");
+    assert_eq!(
+        lines_lf[1], "ValA1,ValB1",
+        "Header must be directly followed by Row 1, not empty line"
+    );
+    assert_eq!(lines_lf[2], "ValA2,ValB2");
+}
+
+#[test]
+fn test_header_toggle_preserves_first_row_data() {
+    let csv_data = "HeaderCol1,HeaderCol2\nDataRow1Col1,DataRow1Col2\nDataRow2Col1,DataRow2Col2\n";
+    let temp_file = create_test_csv(csv_data);
+    let mut engine = CsvEngine::new();
+    let meta = engine.open_file(temp_file.path(), None).unwrap();
+
+    // 初期状態 (ヘッダあり)
+    assert_eq!(meta.total_rows, 2);
+    assert_eq!(meta.headers, vec!["HeaderCol1", "HeaderCol2"]);
+    assert_eq!(engine.get_cell_value(0, 0), "DataRow1Col1");
+
+    // ヘッダなしに切り替え
+    let meta_no_hdr = engine.set_has_header(false).unwrap();
+    assert_eq!(meta_no_hdr.total_rows, 3);
+    assert_eq!(meta_no_hdr.headers, vec!["1", "2"]);
+    // 元のヘッダが第0行のデータとして復元されていること
+    assert_eq!(engine.get_cell_value(0, 0), "HeaderCol1");
+    assert_eq!(engine.get_cell_value(0, 1), "HeaderCol2");
+    assert_eq!(engine.get_cell_value(1, 0), "DataRow1Col1");
+
+    // 再度ヘッダありに切り替え
+    let meta_hdr = engine.set_has_header(true).unwrap();
+    assert_eq!(meta_hdr.total_rows, 2);
+    assert_eq!(meta_hdr.headers, vec!["HeaderCol1", "HeaderCol2"]);
+    assert_eq!(engine.get_cell_value(0, 0), "DataRow1Col1");
+}
