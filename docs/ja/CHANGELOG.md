@@ -9,6 +9,25 @@
 
 ## [Unreleased]
 
+### 修正 (Fixed)
+- **Windows上書き保存時のファイルロック解除と保存パス完全解決 (`io.rs`, `main.rs`, `tauriBridge.ts`, `App.tsx`, `SaveModal.tsx`)**:
+  - Windows OS Error 1224 (`ERROR_USER_MAPPED_FILE`) 対策として、一時ファイル書き出し ＋ `mmap` メモリマップ解除 ＋ アトミック置換 ＋ 再オープン・行キャッシュ同期処理を実装。
+  - 相対パスやファイル名単体が渡された場合でも、元ファイルの親ディレクトリを自動解決して同じフォルダへ確実に上書き保存するフォールバックを実装。
+  - Windowsネイティブのファイル選択ダイアログ（`select_file_dialog`）および「名前を付けて保存」モーダルでの「参照...」ボタンによる保存先選択ダイアログを追加。
+  - 上書き保存直後に画面描画が真っ白になるキャッシュ不整合不具合を解消（`cacheVersion` によるチャンク再取得トリガーを同期）。
+- **ヘッダー行切替時の空行化・1行目データ欠落の修正 (`io.rs`, `VirtualTable.tsx`)**:
+  - 「一行目をヘッダとする」トグル時の空行挿入を根絶し、ヘッダOFF時・ファイル再読込時に古い行キャッシュを即座に破棄・再取得して1行目データを確実に描画。
+- **キーボード十字キーによるセル移動の安定化＆スクロール自動追従 (`VirtualTable.tsx`)**:
+  - セルクリック・行番号クリック・コンテナクリック・ファイル読込完了時にテーブルコンテナへフォーカスを自動付与し、ブラウザ標準の全体スクロールを抑止してセル間を確実に移動可能に改善。
+  - 矢印キー（`←` `→`）による左右移動時、画面外の列へもスムーズに自動追従横スクロールするよう `ensureCellVisible` を拡張。
+- **セル編集時のマウスクリックによるキャレット移動＆全選択解除の改善 (`VirtualTable.tsx`)**:
+  - セル編集 `<input>` 内でのマウスクリックイベントが親セルの `preventDefault()` に阻害されないよう `stopPropagation` を設定。
+### リファクタリング (Refactored)
+- **大規模ソースコードのモジュール分割（全ソースファイル 1,000行以内を達成）**:
+  - `VirtualTable.tsx` (1,549行 → 840行): 列リサイズ (`useColumnResize`)、クリップボード (`useTableClipboard`)、スティッキーヘッダー (`TableHeader`)、仮想行・セル描画 (`TableRow`)、ハイライト描画 (`textHighlight`) へ関心の分離を実施。
+  - `App.tsx` (1,404行 → 489行): 履歴管理 (`useHistoryManager`)、ファイルI/O・D&D (`useFileOperations`)、構造編集・セル更新 (`useTableOperations`)、検索・置換 (`useSearchOperations`) の4大カスタムフックへ抽出し、コンポーネント本体の肥大化を解消。
+  - `csvWorker.ts` (1,387行 → 336行): Web Workerの内部実装を Rust バックエンドと同様に単一責任サブモジュール (`workerTypes`, `workerEncoding`, `workerParser`, `workerSearch`, `workerGrid`) へ分割リファクタリング。
+
 ---
 
 ## [1.2.0] - 2026-09-02

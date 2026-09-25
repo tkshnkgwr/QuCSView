@@ -121,3 +121,13 @@ Future development focuses on enhanced spreadsheet-like editing ergonomics (rect
 - [x] Full-screen Drag & Drop overlay with instant active table file switching.
 - [x] Instant 0ms local TSV clipboard copying with dual fallbacks.
 - [x] Eliminated Vite + Cargo binary file watch lock conflicts (EBUSY).
+
+### Phase 7: Robust File Saving & Refined Keyboard/Editing UX (Completed ✅)
+- [x] Windows memory-mapped file lock resolution on overwrite save (OS Error 1224) via temp file, handle release, and atomic replace.
+- [x] Relative path parent directory auto-resolution fallback and native file open/save dialog integration.
+- [x] Fixed post-save white screen rendering by synchronizing client cache re-fetching.
+- [x] Eliminated spurious blank lines on header toggle and prevented missing first row data on header switch.
+- [x] Arrow key navigation with automatic container focus and horizontal scroll tracking.
+- [x] Natural mouse caret positioning, deselection, and text selection during in-place cell editing.
+- [x] Modular architecture refactoring of frontend (`App.tsx`, `VirtualTable.tsx`) and Web Worker (`csvWorker.ts`), bringing all source files under 1,000 lines.
+

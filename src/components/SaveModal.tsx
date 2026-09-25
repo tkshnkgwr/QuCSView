@@ -9,6 +9,7 @@ import {
   Sliders,
   CheckCircle2,
   AlertCircle,
+  FolderOpen,
 } from 'lucide-react';
 import {
   FileMetadata,
@@ -16,6 +17,7 @@ import {
   SupportedLineEnding,
   SupportedDelimiter,
 } from '../types/csv';
+import { TauriBridge, isTauriEnv } from '../services/tauriBridge';
 
 interface SaveModalProps {
   isOpen: boolean;
@@ -63,6 +65,14 @@ export const SaveModal: React.FC<SaveModalProps> = ({
       setFileName((prev) => prev.replace(/\.csv$/i, '.tsv'));
     } else if (newDelim === ',' && fileName.endsWith('.tsv')) {
       setFileName((prev) => prev.replace(/\.tsv$/i, '.csv'));
+    }
+  };
+
+  const handleBrowseSaveLocation = async () => {
+    if (!isTauriEnv()) return;
+    const selected = await TauriBridge.selectSaveFileDialog(fileName);
+    if (selected) {
+      setFileName(selected);
     }
   };
 
@@ -142,19 +152,38 @@ export const SaveModal: React.FC<SaveModalProps> = ({
               <span>保存ファイル名 / パス</span>
               <span className="text-[11px] font-normal text-gray-500">拡張子: .csv / .tsv / .txt</span>
             </label>
-            <div className="relative flex items-center">
-              <FileSpreadsheet className="w-4 h-4 absolute left-2.5 text-gray-400 pointer-events-none" />
-              <input
-                ref={fileNameInputRef}
-                type="text"
-                id="input-save-filename"
-                value={fileName}
-                onChange={(e) => setFileName(e.target.value)}
-                placeholder="filename.csv"
-                className="w-full bg-gray-50 dark:bg-[#0F1115] border border-gray-300 dark:border-[#2D3139] rounded pl-9 pr-3 py-2 text-xs font-mono text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:outline-none transition-colors"
-                required
-              />
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 flex items-center">
+                <FileSpreadsheet className="w-4 h-4 absolute left-2.5 text-gray-400 pointer-events-none" />
+                <input
+                  ref={fileNameInputRef}
+                  type="text"
+                  id="input-save-filename"
+                  value={fileName}
+                  onChange={(e) => setFileName(e.target.value)}
+                  placeholder="filename.csv"
+                  className="w-full bg-gray-50 dark:bg-[#0F1115] border border-gray-300 dark:border-[#2D3139] rounded pl-9 pr-3 py-2 text-xs font-mono text-gray-900 dark:text-gray-100 focus:border-blue-500 focus:outline-none transition-colors"
+                  required
+                />
+              </div>
+              {isTauriEnv() && (
+                <button
+                  type="button"
+                  id="btn-browse-save-location"
+                  onClick={handleBrowseSaveLocation}
+                  className="px-2.5 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-[#252830] dark:hover:bg-[#2D3139] text-gray-700 dark:text-gray-300 rounded border border-gray-300 dark:border-[#2D3139] flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 font-medium"
+                  title="保存先フォルダを選択..."
+                >
+                  <FolderOpen className="w-3.5 h-3.5" />
+                  <span>参照...</span>
+                </button>
+              )}
             </div>
+            {metadata.filePath && (
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate" title={metadata.filePath}>
+                保存先フォルダ: {metadata.filePath.replace(/[\\/][^\\/]+$/, '')}
+              </p>
+            )}
           </div>
 
           {/* 3分割設定グリッド (区切り文字, 文字コード, 改行コード) */}

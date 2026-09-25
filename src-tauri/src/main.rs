@@ -196,12 +196,95 @@ fn save_csv(
     delimiter: Option<char>,
     state: State<AppState>,
 ) -> Result<bool, String> {
-    let engine = state.engine.lock().map_err(|e| e.to_string())?;
+    let mut engine = state.engine.lock().map_err(|e| e.to_string())?;
     let delim_byte = delimiter.map(|c| c as u8);
+
+    // 相対パスが渡された場合、現在開いているファイルの親ディレクトリを補完する
+    let target_path = if std::path::Path::new(&path).is_relative() {
+        if let Some(ref current_path) = engine.file_path {
+            if let Some(parent) = current_path.parent() {
+                parent.join(&path)
+            } else {
+                std::path::PathBuf::from(&path)
+            }
+        } else {
+            std::path::PathBuf::from(&path)
+        }
+    } else {
+        std::path::PathBuf::from(&path)
+    };
+
     engine
-        .save_to_file(&path, encoding, line_ending, delim_byte)
+        .save_to_file(&target_path, encoding, line_ending, delim_byte)
         .map_err(|e| e.to_string())?;
     Ok(true)
+}
+
+/// Windows ネイティブの「ファイルを開く」ダイアログを開き、選択されたファイルの絶対パスを返却
+#[tauri::command]
+fn select_file_dialog() -> Result<Option<String>, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        let script = r#"
+            Add-Type -AssemblyName System.Windows.Forms
+            $dialog = New-Object System.Windows.Forms.OpenFileDialog
+            $dialog.Filter = "CSV/TSV Files (*.csv;*.tsv;*.txt;*.dat)|*.csv;*.tsv;*.txt;*.dat|All Files (*.*)|*.*"
+            $dialog.Title = "CSV/TSV ファイルを開く"
+            if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                $dialog.FileName
+            }
+        "#;
+        let mut cmd = std::process::Command::new("powershell");
+        cmd.args(["-NoProfile", "-Command", script]);
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        let output = cmd.output().map_err(|e| e.to_string())?;
+        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if path.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(path))
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        Ok(None)
+    }
+}
+
+/// Windows ネイティブの「名前を付けて保存」ダイアログを開き、指定された保存先絶対パスを返却
+#[tauri::command]
+fn select_save_file_dialog(default_name: Option<String>) -> Result<Option<String>, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        let def_name = default_name.unwrap_or_else(|| "export.csv".to_string());
+        let script = r#"
+            Add-Type -AssemblyName System.Windows.Forms
+            $dialog = New-Object System.Windows.Forms.SaveFileDialog
+            $dialog.FileName = "__DEF_NAME__"
+            $dialog.Filter = "CSV Files (*.csv)|*.csv|TSV Files (*.tsv)|*.tsv|DAT Files (*.dat)|*.dat|All Files (*.*)|*.*"
+            $dialog.Title = "ファイルを保存"
+            if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+                $dialog.FileName
+            }
+        "#
+        .replace("__DEF_NAME__", &def_name);
+        let mut cmd = std::process::Command::new("powershell");
+        cmd.args(["-NoProfile", "-Command", &script]);
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        let output = cmd.output().map_err(|e| e.to_string())?;
+        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if path.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(path))
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        Ok(None)
+    }
 }
 
 /// 選択範囲のセルデータをTSV（タブ区切り）形式で取得（クリップボードコピー用）
@@ -374,6 +457,8 @@ fn main() {
             update_from_text,
             clear_modified_cells,
             save_csv,
+            select_file_dialog,
+            select_save_file_dialog,
             close_window,
             minimize_window,
             toggle_maximize_window,

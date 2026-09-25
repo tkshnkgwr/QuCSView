@@ -1,8 +1,4 @@
-// UPDATE 2026-08-26: [Undo/Redo 履歴管理 & 行・列の追加/複製/削除 & 高速ファイル分割]
-// 1. Undo/Redo スタック (undoStack, redoStack) によるセルの値変更・行/列の構造編集の完全巻き戻し/再適用
-// 2. 行・列の挿入/複製/削除操作ハンドラの実装と Worker 連携
-// 3. 高速ファイル分割モーダル (SplitModal) の統合
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { TitleBar } from './components/TitleBar';
 import { Toolbar } from './components/Toolbar';
 import { VirtualTable } from './components/VirtualTable';
@@ -15,21 +11,20 @@ import { FindReplaceModal } from './components/FindReplaceModal';
 import { FolderOpen, FileSpreadsheet } from 'lucide-react';
 import {
   FileMetadata,
-  SupportedEncoding,
-  SupportedLineEnding,
-  SupportedDelimiter,
   CellCoordinate,
   SearchState,
-  SearchMatch,
   SortConfig,
   ViewMode,
-  HistoryAction,
   RecentFile,
   SelectionStats,
 } from './types/csv';
-import { TauriBridge, isTauriEnv } from './services/tauriBridge';
+import { isTauriEnv } from './services/tauriBridge';
 import { useTheme } from './hooks/useTheme';
-import { getRecentFiles, addRecentFile, clearRecentFiles } from './utils/recentFiles';
+import { getRecentFiles } from './utils/recentFiles';
+import { useHistoryManager } from './hooks/useHistoryManager';
+import { useTableOperations } from './hooks/useTableOperations';
+import { useFileOperations } from './hooks/useFileOperations';
+import { useSearchOperations } from './hooks/useSearchOperations';
 
 export default function App() {
   const { themeMode, setThemeMode, resolvedTheme } = useTheme();
@@ -37,6 +32,7 @@ export default function App() {
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [isSplitModalOpen, setIsSplitModalOpen] = useState(false);
   const [isFindReplaceOpen, setIsFindReplaceOpen] = useState(false);
+
   const [metadata, setMetadata] = useState<FileMetadata | null>(null);
   const [hasHeader, setHasHeader] = useState<boolean>(true);
   const [activeCell, setActiveCell] = useState<CellCoordinate | null>({ row: 0, col: 0 });
@@ -48,16 +44,10 @@ export default function App() {
   const [selectionStats, setSelectionStats] = useState<SelectionStats | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // UPDATE 2026-08-26: 表示モード ('table' | 'text') & 未保存セル追跡 Set
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [rawText, setRawText] = useState<string>('');
   const [modifiedCells, setModifiedCells] = useState<Set<string>>(new Set());
 
-  // UPDATE 2026-08-26: [Undo/Redo 履歴スタック]
-  const [undoStack, setUndoStack] = useState<HistoryAction[]>([]);
-  const [redoStack, setRedoStack] = useState<HistoryAction[]>([]);
-
-  // 検索ステート (useRegex, regexError, filterMode を含む)
   const [searchState, setSearchState] = useState<SearchState>({
     query: '',
     caseSensitive: false,
@@ -70,792 +60,132 @@ export default function App() {
     filterMode: false,
   });
 
-  // ソート設定
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     column: null,
     direction: null,
   });
 
-  // 検索一致行のユニークな物理行インデックス一覧（昇順）
-  const matchedRowIndices = useMemo(() => {
-    if (!searchState.matches || searchState.matches.length === 0) return [];
-    const rowSet = new Set<number>();
-    for (const m of searchState.matches) {
-      rowSet.add(m.row);
-    }
-    return Array.from(rowSet).sort((a, b) => a - b);
-  }, [searchState.matches]);
-
-  // アプリ起動時の履歴読込（サンプルデータは自動読込しない）
+  // アプリ起動時の履歴読込
   useEffect(() => {
     setRecentFiles(getRecentFiles());
   }, []);
 
-  // ファイルオープン
-  const handleOpenFile = async (file: File) => {
-    try {
-      const meta = await TauriBridge.openFile(file);
-      setMetadata(meta);
-      setHasHeader(meta.hasHeader ?? true);
-      setActiveCell({ row: 0, col: 0 });
-      setModifiedCells(new Set());
-      setSearchState((prev) => ({
-        ...prev,
-        query: '',
-        matches: [],
-        currentIndex: 0,
-        regexError: null,
-        filterMode: false,
-      }));
-      setJumpToRowTrigger(0);
+  // 1. Undo/Redo 履歴管理カスタムフック
+  const {
+    undoStack,
+    redoStack,
+    pushAction,
+    clearHistory,
+    handleUndo,
+    handleRedo,
+  } = useHistoryManager({
+    setMetadata,
+    setActiveCell,
+    setActiveCellValue,
+    setJumpToRowTrigger,
+    setModifiedCells,
+    activeCell,
+  });
 
-      // 生テキストも即座に同期取得
-      try {
-        const text = await TauriBridge.getCurrentText(meta.lineEnding, meta.delimiter);
-        setRawText(text || '');
-      } catch (_) {}
+  // 2. 検索・置換操作カスタムフック
+  const {
+    matchedRowIndices,
+    executeSearch,
+    handleSearchChange,
+    handleToggleCaseSensitive,
+    handleToggleRegex,
+    handleToggleFilterMode,
+    handleColumnFilterChange,
+    handleNextMatch,
+    handlePrevMatch,
+    handleFindNextInModal,
+    handleFindPrevInModal,
+    handleReplaceCurrentInModal,
+    handleReplaceAllInModal,
+  } = useSearchOperations({
+    searchState,
+    setSearchState,
+    activeCell,
+    setActiveCell,
+    setActiveCellValue,
+    setJumpToRowTrigger,
+    setModifiedCells,
+    setMetadata,
+    pushAction,
+  });
 
-      // 最近開いたファイル履歴に追加
-      const updated = addRecentFile({
-        name: file.name,
-        path: (file as any).path || meta.filePath,
-        size: file.size,
-        encoding: meta.encoding,
-      });
-      setRecentFiles(updated);
-    } catch (err) {
-      console.error('Failed to open file:', err);
-    }
-  };
+  // 3. テーブル構造編集（セル編集・行/列挿入・削除・複製・ソート）カスタムフック
+  const {
+    handleCellEdited,
+    handleBatchCellEdited,
+    handleInsertRow,
+    handleDeleteRow,
+    handleDuplicateRow,
+    handleInsertCol,
+    handleDeleteCol,
+    handleDuplicateCol,
+    handleSortColumn,
+  } = useTableOperations({
+    metadata,
+    setMetadata,
+    activeCell,
+    setActiveCell,
+    setActiveCellValue,
+    setModifiedCells,
+    setJumpToRowTrigger,
+    pushAction,
+    setSortConfig,
+  });
 
-  // ファイルパスからの直接オープン (TauriネイティブD&Dおよび履歴再読込用)
-  const handleOpenFilePath = async (filePath: string) => {
-    try {
-      const meta = await TauriBridge.openFilePath(filePath);
-      setMetadata(meta);
-      setHasHeader(meta.hasHeader ?? true);
-      setActiveCell({ row: 0, col: 0 });
-      setModifiedCells(new Set());
-      setSearchState((prev) => ({
-        ...prev,
-        query: '',
-        matches: [],
-        currentIndex: 0,
-        regexError: null,
-        filterMode: false,
-      }));
-      setJumpToRowTrigger(0);
+  // 4. ファイルオープン・保存・形式変更カスタムフック
+  const {
+    handleOpenFile,
+    handleOpenFilePath,
+    handleTriggerOpenFile,
+    handleOpenRecentFile,
+    handleClearRecentFiles,
+    handleToggleViewMode,
+    handleRawTextChange,
+    handleToggleHasHeader,
+    handleSaveFile,
+    handleSaveConfirm,
+    handleDelimiterChange,
+    handleEncodingChange,
+    handleLineEndingChange,
+  } = useFileOperations({
+    metadata,
+    setMetadata,
+    setHasHeader,
+    setActiveCell,
+    setActiveCellValue,
+    setModifiedCells,
+    setSearchState,
+    setJumpToRowTrigger,
+    setRawText,
+    setRecentFiles,
+    setIsSaveModalOpen,
+    setViewMode,
+    clearHistory,
+    executeSearch,
+    searchState,
+  });
 
-      // 生テキストも即座に同期取得
-      try {
-        const text = await TauriBridge.getCurrentText(meta.lineEnding, meta.delimiter);
-        setRawText(text || '');
-      } catch (_) {}
-
-      const updated = addRecentFile({
-        name: meta.fileName,
-        path: filePath,
-        size: meta.fileSize,
-        encoding: meta.encoding,
-      });
-      setRecentFiles(updated);
-    } catch (err) {
-      console.error('Failed to open file by path:', err);
-    }
-  };
-
-  // 最近開いたファイルの再読込
-  const handleOpenRecentFile = async (recent: RecentFile) => {
-    if (recent.path) {
-      await handleOpenFilePath(recent.path);
-    }
-  };
-
-  // 履歴クリア
-  const handleClearRecentFiles = () => {
-    clearRecentFiles();
-    setRecentFiles([]);
-  };
-
-  // クリップボードからの矩形貼り付け一括編集ハンドラ
-  const handleBatchCellEdited = async (
-    changes: Array<{ row: number; col: number; prevValue: string; newValue: string }>
-  ) => {
-    if (changes.length === 0) return;
-
-    try {
-      // 各セルをエンジンに反映
-      for (const ch of changes) {
-        await TauriBridge.editCell(ch.row, ch.col, ch.newValue);
-      }
-
-      setModifiedCells((prev) => {
-        const next = new Set(prev);
-        for (const ch of changes) {
-          next.add(`${ch.row},${ch.col}`);
-        }
-        return next;
-      });
-
-      setMetadata((prev) => (prev ? { ...prev, isDirty: true } : null));
-
-      // Undoスタックに一括登録
-      setUndoStack((prev) => [
-        ...prev,
-        {
-          type: 'BATCH_REPLACE',
-          description: `${changes.length} セルの貼り付け`,
-          changes,
-        },
-      ]);
-      setRedoStack([]);
-    } catch (err) {
-      console.error('Failed to apply batch pasted cells:', err);
-    }
-  };
-
-  // 表示モード切替 (表プレビュー ⇔ テキスト表示)
-  const handleToggleViewMode = async (mode: ViewMode) => {
-    if (mode === 'text') {
-      try {
-        const text = await TauriBridge.getCurrentText(metadata?.lineEnding, metadata?.delimiter);
-        setRawText(text || '');
-      } catch (err) {
-        console.error('Failed to get raw text:', err);
-      }
-    }
-    setViewMode(mode);
-  };
-
-  // テキスト直接編集時の同期
-  const handleRawTextChange = async (newText: string) => {
-    setRawText(newText);
-    if (!metadata) return;
-    try {
-      const updatedMeta = await TauriBridge.updateFromText(newText, metadata.delimiter);
-      setMetadata(updatedMeta);
-    } catch (err) {
-      console.error('Failed to update from text:', err);
-    }
-  };
-
-  // ヘッダ有無切替
-  const handleToggleHasHeader = async (val: boolean) => {
-    try {
-      const updated = await TauriBridge.setHasHeader(val);
-      setHasHeader(val);
-      setActiveCell({ row: 0, col: 0 });
-      setMetadata((prev) =>
-        prev
-          ? {
-              ...prev,
-              totalRows: updated.totalRows,
-              totalCols: updated.totalCols,
-              headers: updated.headers,
-              hasHeader: updated.hasHeader,
-            }
-          : null
-      );
-
-      // スライス再取得を確実にトリガーするため先頭行（0）へジャンプ
-      setJumpToRowTrigger(0);
-
-      // 生テキストも即座に同期取得
-      try {
-        const text = await TauriBridge.getCurrentText(metadata?.lineEnding, metadata?.delimiter);
-        setRawText(text || '');
-      } catch (_) {}
-
-      // 検索結果の再評価
-      if (searchState.query) {
-        const { matches, error } = await TauriBridge.search(
-          searchState.query,
-          searchState.caseSensitive,
-          searchState.useRegex,
-          searchState.columnFilter
-        );
-        setSearchState((prev) => ({
-          ...prev,
-          matches,
-          regexError: error,
-          currentIndex: 0,
-        }));
-      }
-    } catch (err) {
-      console.error('Failed to toggle hasHeader:', err);
-    }
-  };
-
-  // 保存ダイアログ
-  const handleSaveFile = () => {
-    if (!metadata) return;
-    setIsSaveModalOpen(true);
-  };
-
-  // 保存モーダルで確定された設定で保存実行
-  const handleSaveConfirm = async (options: {
-    filename: string;
-    encoding: SupportedEncoding;
-    lineEnding: SupportedLineEnding;
-    delimiter: SupportedDelimiter;
-    includeBom: boolean;
-  }) => {
-    if (!metadata) return;
-
-    try {
-      await TauriBridge.saveFile(
-        options.filename,
-        options.encoding,
-        options.lineEnding,
-        options.delimiter
-      );
-
-      // 保存完了時に未保存セルマークをリセット
-      await TauriBridge.clearModifiedCells();
-      setModifiedCells(new Set());
-
-      setMetadata((prev) =>
-        prev
-          ? {
-              ...prev,
-              fileName: options.filename,
-              encoding: options.encoding,
-              lineEnding: options.lineEnding,
-              delimiter: options.delimiter,
-              isDirty: false,
-            }
-          : null
-      );
-    } catch (err) {
-      console.error('Failed to save file:', err);
-    }
-  };
-
-  // 区切り文字変更
-  const handleDelimiterChange = async (delimiter: SupportedDelimiter) => {
-    if (!metadata) return;
-    try {
-      const updatedMeta = await TauriBridge.reloadWithEncoding(metadata.encoding, delimiter);
-      setMetadata(updatedMeta);
-      setActiveCellValue('');
-      setModifiedCells(new Set());
-
-      // 生テキストも即座に再取得して同期
-      try {
-        const text = await TauriBridge.getCurrentText(updatedMeta.lineEnding, updatedMeta.delimiter);
-        setRawText(text || '');
-      } catch (_) {}
-
-      if (searchState.query) {
-        executeSearch(
-          searchState.query,
-          searchState.caseSensitive,
-          searchState.useRegex,
-          searchState.columnFilter
-        );
-      }
-    } catch (err) {
-      console.error('Failed to change delimiter:', err);
-    }
-  };
-
-  // エンコーディング変更
-  const handleEncodingChange = async (encoding: SupportedEncoding) => {
-    if (!metadata) return;
-    try {
-      const updatedMeta = await TauriBridge.reloadWithEncoding(encoding, metadata.delimiter);
-      setMetadata(updatedMeta);
-      setActiveCellValue('');
-      setModifiedCells(new Set());
-
-      // 生テキストも即座に再取得して同期
-      try {
-        const text = await TauriBridge.getCurrentText(updatedMeta.lineEnding, updatedMeta.delimiter);
-        setRawText(text || '');
-      } catch (_) {}
-
-      if (searchState.query) {
-        executeSearch(
-          searchState.query,
-          searchState.caseSensitive,
-          searchState.useRegex,
-          searchState.columnFilter
-        );
-      }
-    } catch (err) {
-      console.error('Failed to reload with encoding:', err);
-      setMetadata((prev) => (prev ? { ...prev, encoding, isDirty: true } : null));
-    }
-  };
-
-  // 改行コード変更
-  const handleLineEndingChange = (lineEnding: SupportedLineEnding) => {
-    if (!metadata) return;
-    setMetadata((prev) => (prev ? { ...prev, lineEnding, isDirty: true } : null));
-  };
+  // 行ジャンプ
+  const handleJumpToRow = useCallback(
+    (rowNumber: number) => {
+      if (!metadata) return;
+      const bounded = Math.max(0, Math.min(rowNumber, metadata.totalRows - 1));
+      setActiveCell((prev) => ({ row: bounded, col: prev?.col || 0 }));
+      setJumpToRowTrigger(bounded);
+    },
+    [metadata]
+  );
 
   // アクティブセル同期
   const handleActiveCellChange = useCallback((coord: CellCoordinate | null, value: string) => {
     setActiveCell(coord);
     setActiveCellValue(value);
   }, []);
-
-  // セル編集完了コールバック (未保存セルのSetに追加 & isDirty更新 & Undoスタック記録)
-  const handleCellEdited = async (row: number, col: number, value: string, prevValueParam?: string) => {
-    try {
-      const prevValue = prevValueParam !== undefined ? prevValueParam : await TauriBridge.getCellValue(row, col);
-      if (prevValue === value) return;
-
-      await TauriBridge.editCell(row, col, value);
-      setActiveCellValue(value);
-      setModifiedCells((prev) => new Set(prev).add(`${row},${col}`));
-      setMetadata((prev) => (prev ? { ...prev, isDirty: true } : null));
-
-      setUndoStack((prev) => [
-        ...prev,
-        {
-          type: 'EDIT_CELL',
-          row,
-          col,
-          prevValue,
-          newValue: value,
-        },
-      ]);
-      setRedoStack([]);
-    } catch (err) {
-      console.error('Failed to edit cell:', err);
-    }
-  };
-
-  // UPDATE 2026-08-26: [行の挿入 / 削除 / 複製ハンドラ]
-  const handleInsertRow = async (row: number, rowData?: string[]) => {
-    try {
-      const updatedMeta = await TauriBridge.insertRow(row, rowData);
-      setMetadata((prev) => (prev ? { ...prev, ...updatedMeta, isDirty: true } : null));
-      const actualRowData = rowData || new Array(metadata?.totalCols || 0).fill('');
-      setUndoStack((prev) => [
-        ...prev,
-        {
-          type: 'INSERT_ROW',
-          row,
-          rowData: actualRowData,
-        },
-      ]);
-      setRedoStack([]);
-      // 挿入された行へ移動
-      setActiveCell({ row, col: activeCell?.col || 0 });
-      setJumpToRowTrigger(row);
-    } catch (err) {
-      console.error('Failed to insert row:', err);
-    }
-  };
-
-  const handleDeleteRow = async (row: number) => {
-    try {
-      const res = await TauriBridge.deleteRow(row);
-      setMetadata((prev) =>
-        prev
-          ? {
-              ...prev,
-              totalRows: res.totalRows ?? prev.totalRows - 1,
-              isDirty: true,
-            }
-          : null
-      );
-      setUndoStack((prev) => [
-        ...prev,
-        {
-          type: 'DELETE_ROW',
-          row,
-          rowData: res.deletedData,
-        },
-      ]);
-      setRedoStack([]);
-      if (activeCell && activeCell.row >= (metadata?.totalRows || 1) - 1) {
-        setActiveCell({ row: Math.max(0, (metadata?.totalRows || 1) - 2), col: activeCell.col });
-      }
-    } catch (err) {
-      console.error('Failed to delete row:', err);
-    }
-  };
-
-  const handleDuplicateRow = async (sourceRow: number) => {
-    try {
-      const res = await TauriBridge.duplicateRow(sourceRow);
-      setMetadata((prev) =>
-        prev
-          ? {
-              ...prev,
-              totalRows: res.totalRows ?? prev.totalRows + 1,
-              isDirty: true,
-            }
-          : null
-      );
-      setUndoStack((prev) => [
-        ...prev,
-        {
-          type: 'DUPLICATE_ROW',
-          sourceRow,
-          targetRow: res.insertedRow,
-          rowData: res.rowData,
-        },
-      ]);
-      setRedoStack([]);
-      setActiveCell({ row: res.insertedRow, col: activeCell?.col || 0 });
-      setJumpToRowTrigger(res.insertedRow);
-    } catch (err) {
-      console.error('Failed to duplicate row:', err);
-    }
-  };
-
-  // UPDATE 2026-08-26: [列の挿入 / 削除 / 複製ハンドラ]
-  const handleInsertCol = async (col: number, headerName?: string) => {
-    try {
-      const updatedMeta = await TauriBridge.insertCol(col, headerName);
-      setMetadata((prev) => (prev ? { ...prev, ...updatedMeta, isDirty: true } : null));
-      const actualHeader = headerName || `Col ${col + 1}`;
-      setUndoStack((prev) => [
-        ...prev,
-        {
-          type: 'INSERT_COL',
-          col,
-          headerName: actualHeader,
-        },
-      ]);
-      setRedoStack([]);
-      setActiveCell({ row: activeCell?.row || 0, col });
-    } catch (err) {
-      console.error('Failed to insert column:', err);
-    }
-  };
-
-  const handleDeleteCol = async (col: number) => {
-    try {
-      const res = await TauriBridge.deleteCol(col);
-      setMetadata((prev) =>
-        prev
-          ? {
-              ...prev,
-              totalCols: res.totalCols ?? prev.totalCols - 1,
-              headers: res.headers ?? prev.headers,
-              isDirty: true,
-            }
-          : null
-      );
-      setUndoStack((prev) => [
-        ...prev,
-        {
-          type: 'DELETE_COL',
-          col,
-          headerName: res.deletedHeader,
-          colValues: res.deletedColValues,
-        },
-      ]);
-      setRedoStack([]);
-      if (activeCell && activeCell.col >= (metadata?.totalCols || 1) - 1) {
-        setActiveCell({ row: activeCell.row, col: Math.max(0, (metadata?.totalCols || 1) - 2) });
-      }
-    } catch (err) {
-      console.error('Failed to delete column:', err);
-    }
-  };
-
-  const handleDuplicateCol = async (sourceCol: number) => {
-    try {
-      const res = await TauriBridge.duplicateCol(sourceCol);
-      setMetadata((prev) =>
-        prev
-          ? {
-              ...prev,
-              totalCols: res.totalCols ?? prev.totalCols + 1,
-              headers: res.headers ?? prev.headers,
-              isDirty: true,
-            }
-          : null
-      );
-      setUndoStack((prev) => [
-        ...prev,
-        {
-          type: 'DUPLICATE_COL',
-          sourceCol,
-          targetCol: res.insertedCol,
-          headerName: res.headerName,
-          colValues: res.colValues,
-        },
-      ]);
-      setRedoStack([]);
-      setActiveCell({ row: activeCell?.row || 0, col: res.insertedCol });
-    } catch (err) {
-      console.error('Failed to duplicate column:', err);
-    }
-  };
-
-  // UPDATE 2026-08-26: [Undo / Redo 実行ロジック]
-  const handleUndo = async () => {
-    if (undoStack.length === 0) return;
-    const action = undoStack[undoStack.length - 1];
-    const newUndoStack = undoStack.slice(0, -1);
-
-    try {
-      switch (action.type) {
-        case 'EDIT_CELL': {
-          await TauriBridge.editCell(action.row, action.col, action.prevValue);
-          setActiveCell({ row: action.row, col: action.col });
-          setActiveCellValue(action.prevValue);
-          setJumpToRowTrigger(action.row);
-          break;
-        }
-        case 'INSERT_ROW': {
-          // 挿入した行を削除
-          const res = await TauriBridge.deleteRow(action.row);
-          setMetadata((prev) => (prev ? { ...prev, totalRows: res.totalRows ?? prev.totalRows - 1 } : null));
-          break;
-        }
-        case 'DELETE_ROW': {
-          // 削除した行を再挿入
-          const res = await TauriBridge.insertRow(action.row, action.rowData);
-          setMetadata((prev) => (prev ? { ...prev, ...res } : null));
-          setActiveCell({ row: action.row, col: activeCell?.col || 0 });
-          setJumpToRowTrigger(action.row);
-          break;
-        }
-        case 'DUPLICATE_ROW': {
-          // 複製された行を削除
-          const res = await TauriBridge.deleteRow(action.targetRow);
-          setMetadata((prev) => (prev ? { ...prev, totalRows: res.totalRows ?? prev.totalRows - 1 } : null));
-          break;
-        }
-        case 'INSERT_COL': {
-          // 挿入した列を削除
-          const res = await TauriBridge.deleteCol(action.col);
-          setMetadata((prev) => (prev ? { ...prev, totalCols: res.totalCols ?? prev.totalCols - 1, headers: res.headers ?? prev.headers } : null));
-          break;
-        }
-        case 'DELETE_COL': {
-          // 削除した列を再挿入
-          const res = await TauriBridge.insertCol(action.col, action.headerName);
-          // 列の各セル値を復元
-          for (let r = 0; r < action.colValues.length; r++) {
-            await TauriBridge.editCell(r, action.col, action.colValues[r]);
-          }
-          setMetadata((prev) => (prev ? { ...prev, ...res } : null));
-          break;
-        }
-        case 'DUPLICATE_COL': {
-          // 複製された列を削除
-          const res = await TauriBridge.deleteCol(action.targetCol);
-          setMetadata((prev) => (prev ? { ...prev, totalCols: res.totalCols ?? prev.totalCols - 1, headers: res.headers ?? prev.headers } : null));
-          break;
-        }
-        case 'BATCH_REPLACE': {
-          for (const c of action.changes) {
-            await TauriBridge.editCell(c.row, c.col, c.prevValue);
-          }
-          setModifiedCells((prev) => {
-            const next = new Set(prev);
-            action.changes.forEach((c) => next.add(`${c.row},${c.col}`));
-            return next;
-          });
-          if (action.changes.length > 0) {
-            setActiveCell({ row: action.changes[0].row, col: action.changes[0].col });
-            setJumpToRowTrigger(action.changes[0].row);
-          }
-          break;
-        }
-      }
-
-      setUndoStack(newUndoStack);
-      setRedoStack((prev) => [...prev, action]);
-    } catch (err) {
-      console.error('Failed to execute Undo:', err);
-    }
-  };
-
-  const handleRedo = async () => {
-    if (redoStack.length === 0) return;
-    const action = redoStack[redoStack.length - 1];
-    const newRedoStack = redoStack.slice(0, -1);
-
-    try {
-      switch (action.type) {
-        case 'EDIT_CELL': {
-          await TauriBridge.editCell(action.row, action.col, action.newValue);
-          setActiveCell({ row: action.row, col: action.col });
-          setActiveCellValue(action.newValue);
-          setJumpToRowTrigger(action.row);
-          break;
-        }
-        case 'INSERT_ROW': {
-          const res = await TauriBridge.insertRow(action.row, action.rowData);
-          setMetadata((prev) => (prev ? { ...prev, ...res } : null));
-          setActiveCell({ row: action.row, col: activeCell?.col || 0 });
-          setJumpToRowTrigger(action.row);
-          break;
-        }
-        case 'DELETE_ROW': {
-          const res = await TauriBridge.deleteRow(action.row);
-          setMetadata((prev) => (prev ? { ...prev, totalRows: res.totalRows ?? prev.totalRows - 1 } : null));
-          break;
-        }
-        case 'DUPLICATE_ROW': {
-          const res = await TauriBridge.duplicateRow(action.sourceRow, action.targetRow);
-          setMetadata((prev) => (prev ? { ...prev, totalRows: res.totalRows ?? prev.totalRows + 1 } : null));
-          setActiveCell({ row: action.targetRow, col: activeCell?.col || 0 });
-          setJumpToRowTrigger(action.targetRow);
-          break;
-        }
-        case 'INSERT_COL': {
-          const res = await TauriBridge.insertCol(action.col, action.headerName);
-          setMetadata((prev) => (prev ? { ...prev, ...res } : null));
-          break;
-        }
-        case 'DELETE_COL': {
-          const res = await TauriBridge.deleteCol(action.col);
-          setMetadata((prev) => (prev ? { ...prev, totalCols: res.totalCols ?? prev.totalCols - 1, headers: res.headers ?? prev.headers } : null));
-          break;
-        }
-        case 'DUPLICATE_COL': {
-          const res = await TauriBridge.duplicateCol(action.sourceCol, action.targetCol, action.headerName);
-          setMetadata((prev) => (prev ? { ...prev, totalCols: res.totalCols ?? prev.totalCols + 1, headers: res.headers ?? prev.headers } : null));
-          break;
-        }
-        case 'BATCH_REPLACE': {
-          for (const c of action.changes) {
-            await TauriBridge.editCell(c.row, c.col, c.newValue);
-          }
-          setModifiedCells((prev) => {
-            const next = new Set(prev);
-            action.changes.forEach((c) => next.add(`${c.row},${c.col}`));
-            return next;
-          });
-          if (action.changes.length > 0) {
-            setActiveCell({ row: action.changes[0].row, col: action.changes[0].col });
-            setJumpToRowTrigger(action.changes[0].row);
-          }
-          break;
-        }
-      }
-
-      setRedoStack(newRedoStack);
-      setUndoStack((prev) => [...prev, action]);
-    } catch (err) {
-      console.error('Failed to execute Redo:', err);
-    }
-  };
-
-  // 検索クエリ実行
-  const executeSearch = useCallback(
-    async (
-      query: string,
-      caseSensitive: boolean,
-      useRegex: boolean,
-      colFilter: number | null
-    ) => {
-      if (!query.trim()) {
-        setSearchState((prev) => ({
-          ...prev,
-          query,
-          matches: [],
-          currentIndex: 0,
-          regexError: null,
-          filterMode: false,
-        }));
-        return;
-      }
-      try {
-        const { matches, error } = await TauriBridge.search(
-          query,
-          caseSensitive,
-          useRegex,
-          colFilter
-        );
-        setSearchState((prev) => ({
-          ...prev,
-          query,
-          caseSensitive,
-          useRegex,
-          regexError: error,
-          columnFilter: colFilter,
-          matches,
-          currentIndex: 0,
-        }));
-        if (matches.length > 0) {
-          const first = matches[0];
-          setActiveCell({ row: first.row, col: first.col });
-          setActiveCellValue(first.value);
-          setJumpToRowTrigger(first.row);
-        }
-      } catch (err) {
-        console.error('Search failed:', err);
-      }
-    },
-    []
-  );
-
-  const handleSearchChange = (query: string) => {
-    setSearchState((prev) => ({ ...prev, query }));
-    executeSearch(query, searchState.caseSensitive, searchState.useRegex, searchState.columnFilter);
-  };
-
-  const handleToggleCaseSensitive = () => {
-    const nextVal = !searchState.caseSensitive;
-    setSearchState((prev) => ({ ...prev, caseSensitive: nextVal }));
-    executeSearch(searchState.query, nextVal, searchState.useRegex, searchState.columnFilter);
-  };
-
-  const handleToggleRegex = () => {
-    const nextVal = !searchState.useRegex;
-    setSearchState((prev) => ({ ...prev, useRegex: nextVal }));
-    executeSearch(searchState.query, searchState.caseSensitive, nextVal, searchState.columnFilter);
-  };
-
-  const handleToggleFilterMode = () => {
-    setSearchState((prev) => ({ ...prev, filterMode: !prev.filterMode }));
-  };
-
-  const handleColumnFilterChange = (colIndex: number | null) => {
-    setSearchState((prev) => ({ ...prev, columnFilter: colIndex }));
-    executeSearch(searchState.query, searchState.caseSensitive, searchState.useRegex, colIndex);
-  };
-
-  const handleNextMatch = () => {
-    if (searchState.matches.length === 0) return;
-    const nextIdx = (searchState.currentIndex + 1) % searchState.matches.length;
-    setSearchState((prev) => ({ ...prev, currentIndex: nextIdx }));
-    const match = searchState.matches[nextIdx];
-    setActiveCell({ row: match.row, col: match.col });
-    setActiveCellValue(match.value);
-    setJumpToRowTrigger(match.row);
-  };
-
-  const handlePrevMatch = () => {
-    if (searchState.matches.length === 0) return;
-    const prevIdx =
-      (searchState.currentIndex - 1 + searchState.matches.length) % searchState.matches.length;
-    setSearchState((prev) => ({ ...prev, currentIndex: prevIdx }));
-    const match = searchState.matches[prevIdx];
-    setActiveCell({ row: match.row, col: match.col });
-    setActiveCellValue(match.value);
-    setJumpToRowTrigger(match.row);
-  };
-
-  const handleJumpToRow = (rowNumber: number) => {
-    if (!metadata) return;
-    const bounded = Math.max(0, Math.min(rowNumber, metadata.totalRows - 1));
-    setActiveCell((prev) => ({ row: bounded, col: prev?.col || 0 }));
-    setJumpToRowTrigger(bounded);
-  };
-
-  // カラムソート
-  const handleSortColumn = (colIndex: number) => {
-    setSortConfig((prev) => {
-      if (prev.column === colIndex) {
-        if (prev.direction === 'asc') return { column: colIndex, direction: 'desc' };
-        if (prev.direction === 'desc') return { column: null, direction: null };
-      }
-      return { column: colIndex, direction: 'asc' };
-    });
-  };
 
   // グローバルドラッグ＆ドロップおよびキーボードショートカット (F1, Ctrl+S, Ctrl+O, Ctrl+F 等)
   useEffect(() => {
@@ -893,8 +223,6 @@ export default function App() {
       e.stopPropagation();
       dragCounter = 0;
       setIsDragging(false);
-      // UPDATE 2026-09-18: Tauriデスクトップ環境では onDragDropEvent がファイルパス付きで直接開くため、
-      // HTML5 dropイベントによる重複オープン（パス喪失・レースコンディション）を防止
       if (isTauriEnv()) {
         return;
       }
@@ -915,7 +243,7 @@ export default function App() {
         handleSaveFile();
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
         e.preventDefault();
-        document.getElementById('btn-open-file')?.click();
+        handleTriggerOpenFile();
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
         e.preventDefault();
         const searchInput = document.getElementById('input-search-csv') as HTMLInputElement;
@@ -935,7 +263,6 @@ export default function App() {
     window.addEventListener('drop', handleDrop);
     window.addEventListener('keydown', handleGlobalKeyDown);
 
-    // Tauri デスクトップ環境用のネイティブファイルドロップイベント登録
     let unlistenTauriDrop: (() => void) | null = null;
     if (isTauriEnv()) {
       import('@tauri-apps/api/webview')
@@ -972,178 +299,12 @@ export default function App() {
         unlistenTauriDrop();
       }
     };
-  }, [metadata, viewMode]);
-
-  // モーダル内での検索ハンドラ
-  const handleFindNextInModal = async (
-    q: string,
-    caseSens: boolean,
-    regex: boolean,
-    colFilt: number | null
-  ): Promise<SearchMatch | null> => {
-    try {
-      const { matches, error } = await TauriBridge.search(q, caseSens, regex, colFilt);
-      setSearchState((prev) => ({
-        ...prev,
-        query: q,
-        caseSensitive: caseSens,
-        useRegex: regex,
-        regexError: error,
-        columnFilter: colFilt,
-        matches,
-      }));
-
-      if (matches.length > 0) {
-        // 現在のアクティブセル以降の最初の一致を探す
-        let nextIdx = 0;
-        if (activeCell) {
-          const found = matches.findIndex(
-            (m) => m.row > activeCell.row || (m.row === activeCell.row && m.col > activeCell.col)
-          );
-          nextIdx = found !== -1 ? found : 0;
-        }
-        const match = matches[nextIdx];
-        setSearchState((prev) => ({ ...prev, currentIndex: nextIdx }));
-        setActiveCell({ row: match.row, col: match.col });
-        setActiveCellValue(match.value);
-        setJumpToRowTrigger(match.row);
-        return match;
-      }
-      return null;
-    } catch (err) {
-      console.error('Find next failed:', err);
-      return null;
-    }
-  };
-
-  const handleFindPrevInModal = async (
-    q: string,
-    caseSens: boolean,
-    regex: boolean,
-    colFilt: number | null
-  ): Promise<SearchMatch | null> => {
-    try {
-      const { matches, error } = await TauriBridge.search(q, caseSens, regex, colFilt);
-      setSearchState((prev) => ({
-        ...prev,
-        query: q,
-        caseSensitive: caseSens,
-        useRegex: regex,
-        regexError: error,
-        columnFilter: colFilt,
-        matches,
-      }));
-
-      if (matches.length > 0) {
-        let prevIdx = matches.length - 1;
-        if (activeCell) {
-          const foundReverse = [...matches]
-            .reverse()
-            .findIndex((m) => m.row < activeCell.row || (m.row === activeCell.row && m.col < activeCell.col));
-          if (foundReverse !== -1) {
-            prevIdx = matches.length - 1 - foundReverse;
-          }
-        }
-        const match = matches[prevIdx];
-        setSearchState((prev) => ({ ...prev, currentIndex: prevIdx }));
-        setActiveCell({ row: match.row, col: match.col });
-        setActiveCellValue(match.value);
-        setJumpToRowTrigger(match.row);
-        return match;
-      }
-      return null;
-    } catch (err) {
-      console.error('Find prev failed:', err);
-      return null;
-    }
-  };
-
-  const handleReplaceCurrentInModal = async (
-    q: string,
-    rep: string,
-    caseSens: boolean,
-    regex: boolean,
-    colFilt: number | null
-  ): Promise<boolean> => {
-    if (!activeCell) return false;
-    try {
-      const res = await TauriBridge.replaceCell(
-        activeCell.row,
-        activeCell.col,
-        q,
-        rep,
-        caseSens,
-        regex
-      );
-      if (res) {
-        setModifiedCells((prev) => new Set(prev).add(`${res.row},${res.col}`));
-        setMetadata((prev) => (prev ? { ...prev, isDirty: true } : null));
-        setUndoStack((prev) => [
-          ...prev,
-          {
-            type: 'EDIT_CELL',
-            row: res.row,
-            col: res.col,
-            prevValue: res.prevValue,
-            newValue: res.newValue,
-          },
-        ]);
-        setRedoStack([]);
-        setActiveCellValue(res.newValue);
-        // 置換後、次のマッチへ自動移動
-        await handleFindNextInModal(q, caseSens, regex, colFilt);
-        return true;
-      }
-      return false;
-    } catch (err) {
-      console.error('Replace current failed:', err);
-      return false;
-    }
-  };
-
-  const handleReplaceAllInModal = async (
-    q: string,
-    rep: string,
-    caseSens: boolean,
-    regex: boolean,
-    colFilt: number | null
-  ): Promise<number> => {
-    try {
-      const res = await TauriBridge.replaceAll(q, rep, caseSens, regex, colFilt);
-      if (res && res.replacedCount > 0) {
-        setModifiedCells((prev) => {
-          const next = new Set(prev);
-          res.changes.forEach((c) => next.add(`${c.row},${c.col}`));
-          return next;
-        });
-        setMetadata((prev) => (prev ? { ...prev, isDirty: true } : null));
-        setUndoStack((prev) => [
-          ...prev,
-          {
-            type: 'BATCH_REPLACE',
-            description: `${res.replacedCount} 件の置換`,
-            changes: res.changes,
-          },
-        ]);
-        setRedoStack([]);
-
-        // 検索状態をリフレッシュ
-        await executeSearch(q, caseSens, regex, colFilt);
-        return res.replacedCount;
-      }
-      return 0;
-    } catch (err) {
-      console.error('Replace all failed:', err);
-      throw err;
-    }
-  };
+  }, [handleOpenFile, handleOpenFilePath, handleSaveFile, handleTriggerOpenFile]);
 
   const currentMatch =
     searchState.matches.length > 0 ? searchState.matches[searchState.currentIndex] : null;
 
   return (
-// UPDATE 2026-08-26: [ライト/ダークテーマ完全両立スタイリング]
-// なぜ: 無効な light: プレフィックスを排除し、デフォルト（ライト）と dark: バリアントによる確実なテーマ切り替えを実現するため
     <div
       id="qu-app-root"
       className="flex flex-col h-screen w-screen overflow-hidden bg-[#FAFAFA] dark:bg-[#0F1115] text-gray-800 dark:text-[#D1D5DB] font-mono select-none"
@@ -1161,12 +322,13 @@ export default function App() {
         onClearRecentFiles={handleClearRecentFiles}
       />
 
-      {/* 2. ツールバー（ファイル開く・保存、Undo/Redo、置換、ファイル分割、表示切替[表/テキスト]、超高速固定幅検索、クリアボタン、正規表現トグル、行フィルタ、ヘッダ切替、文字コード切替） */}
+      {/* 2. ツールバー */}
       <Toolbar
         metadata={metadata}
         hasHeader={hasHeader}
         onToggleHasHeader={handleToggleHasHeader}
         onOpenFile={handleOpenFile}
+        onTriggerOpenFile={handleTriggerOpenFile}
         onSaveFile={handleSaveFile}
         onEncodingChange={handleEncodingChange}
         viewMode={viewMode}
@@ -1252,7 +414,7 @@ export default function App() {
               }
             }}
             className="max-w-md w-full border-2 border-dashed border-gray-300 dark:border-[#2D3139] rounded-2xl p-10 flex flex-col items-center text-center hover:border-blue-500/60 dark:hover:border-blue-500/60 transition-colors cursor-pointer"
-            onClick={() => document.getElementById('btn-open-file')?.click()}
+            onClick={handleTriggerOpenFile}
           >
             <div className="p-4 bg-blue-50 dark:bg-blue-950/40 rounded-full text-blue-600 dark:text-blue-400 mb-4">
               <FileSpreadsheet className="w-10 h-10" />
@@ -1265,82 +427,93 @@ export default function App() {
             </p>
             <button
               type="button"
-              onClick={() => document.getElementById('btn-open-file')?.click()}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleTriggerOpenFile();
+              }}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center gap-2"
             >
               <FolderOpen className="w-4 h-4" />
               <span>ファイルを選択</span>
             </button>
-            <span className="text-[11px] text-gray-400 dark:text-gray-500 mt-4">
-              ショートカット: Ctrl + O
-            </span>
           </div>
         </div>
       )}
 
-      {/* 4. ステータスバー (未保存編集箇所 & 選択範囲簡易統計バッジ表示) */}
+      {/* 4. ステータスバー */}
       <StatusBar
         metadata={metadata}
         activeCell={activeCell}
         activeCellValue={activeCellValue}
-        isFilterActive={searchState.filterMode}
-        filteredCount={matchedRowIndices.length}
-        modifiedCount={modifiedCells.size}
+        hasHeader={hasHeader}
         selectionStats={selectionStats}
+        onEncodingChange={handleEncodingChange}
+        onLineEndingChange={handleLineEndingChange}
+        onDelimiterChange={handleDelimiterChange}
       />
 
-      {/* 5. ヘルプ＆ショートカットモーダル (F1 / ? ボタン) */}
+      {/* 5. 各種モーダル */}
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
-
-      {/* 6. 保存ダイアログモーダル (Ctrl+S / 保存ボタン) */}
       <SaveModal
         isOpen={isSaveModalOpen}
         onClose={() => setIsSaveModalOpen(false)}
         metadata={metadata}
         onSaveConfirm={handleSaveConfirm}
       />
+      {metadata && (
+        <SplitModal
+          isOpen={isSplitModalOpen}
+          onClose={() => setIsSplitModalOpen(false)}
+          metadata={metadata}
+          filterIndices={searchState.filterMode ? matchedRowIndices : null}
+        />
+      )}
+      {metadata && (
+        <FindReplaceModal
+          isOpen={isFindReplaceOpen}
+          onClose={() => setIsFindReplaceOpen(false)}
+          metadata={metadata}
+          currentMatchIndex={searchState.currentIndex}
+          totalMatches={searchState.matches.length}
+          onFindNext={handleFindNextInModal}
+          onFindPrev={handleFindPrevInModal}
+          onReplaceCurrent={handleReplaceCurrentInModal}
+          onReplaceAll={handleReplaceAllInModal}
+        />
+      )}
 
-      {/* 7. 大規模ファイル高速分割モーダル */}
-      <SplitModal
-        isOpen={isSplitModalOpen}
-        onClose={() => setIsSplitModalOpen(false)}
-        metadata={metadata}
-      />
-
-      {/* 8. 検索・一括置換モーダル (Ctrl+H / ツールバー置換) */}
-      <FindReplaceModal
-        isOpen={isFindReplaceOpen}
-        onClose={() => setIsFindReplaceOpen(false)}
-        metadata={metadata}
-        initialQuery={searchState.query}
-        initialUseRegex={searchState.useRegex}
-        initialCaseSensitive={searchState.caseSensitive}
-        initialColumnFilter={searchState.columnFilter}
-        onFindNext={handleFindNextInModal}
-        onFindPrev={handleFindPrevInModal}
-        onReplaceCurrent={handleReplaceCurrentInModal}
-        onReplaceAll={handleReplaceAllInModal}
-      />
-
-      {/* 9. ドラッグ＆ドロップ用フローティングオーバーレイ */}
+      {/* 全画面ドラッグ＆ドロップ オーバーレイ */}
       {isDragging && (
         <div
-          id="dnd-overlay"
-          className="fixed inset-0 z-50 bg-blue-600/20 dark:bg-blue-600/30 backdrop-blur-xs border-4 border-dashed border-blue-500 flex flex-col items-center justify-center pointer-events-none animate-in fade-in duration-150"
+          id="drop-overlay-full"
+          className="fixed inset-0 z-50 bg-blue-600/20 backdrop-blur-[2px] border-4 border-dashed border-blue-500 flex flex-col items-center justify-center pointer-events-none animate-in fade-in duration-150"
         >
-          <div className="p-6 bg-white dark:bg-[#1A1D23] rounded-2xl shadow-2xl border border-blue-400 flex flex-col items-center gap-3">
-            <div className="p-4 bg-blue-50 dark:bg-blue-950/60 rounded-full text-blue-600 dark:text-blue-400 animate-bounce">
-              <FileSpreadsheet className="w-10 h-10" />
+          <div className="bg-white dark:bg-[#1A1D23] px-8 py-6 rounded-2xl shadow-2xl flex flex-col items-center border border-blue-500/40 transform scale-105 transition-transform">
+            <div className="p-4 bg-blue-100 dark:bg-blue-950/60 rounded-full text-blue-600 dark:text-blue-400 mb-3 animate-bounce">
+              <FileSpreadsheet className="w-12 h-12" />
             </div>
-            <span className="text-base font-bold text-gray-900 dark:text-white font-mono">
-              ファイルをここにドロップして開く
-            </span>
-            <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-              CSV / TSV ファイルを瞬時に高速プレビューします
-            </span>
+            <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">
+              ファイルをドロップして開く
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              CSV / TSV ファイルを瞬時に読み込みます
+            </p>
           </div>
         </div>
       )}
+
+      {/* 隠し input[type="file"] */}
+      <input
+        id="btn-open-file"
+        type="file"
+        accept=".csv,.tsv,.txt,.dat,text/csv,text/tab-separated-values,text/plain"
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files && e.target.files[0]) {
+            handleOpenFile(e.target.files[0]);
+          }
+        }}
+      />
     </div>
   );
 }

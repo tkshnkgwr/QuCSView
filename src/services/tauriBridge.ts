@@ -719,27 +719,23 @@ export class TauriBridge {
 // UPDATE 2026-08-21: [保存文字コードバイナリ出力]
 // なぜ: Shift_JIS / EUC-JP / UTF-8 BOM指定保存時に正確な文字コードのバイナリBlobをダウンロードさせるため。
   /**
-   * ファイル保存（指定ファイル名・エンコーディング・改行コード・区切り文字）
+   * ファイル保存（指定ファイルパス・エンコーディング・改行コード・区切り文字）
    */
   static async saveFile(
-    fileName: string,
+    filePath: string,
     encoding: SupportedEncoding,
     lineEnding: SupportedLineEnding,
     delimiter?: SupportedDelimiter
   ): Promise<void> {
     if (isTauriEnv()) {
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        await invoke('save_csv', {
-          path: fileName,
-          encoding,
-          lineEnding,
-          delimiter: delimiter || null,
-        });
-        return;
-      } catch (err) {
-        console.warn('Tauri invoke failed, falling back to browser download:', err);
-      }
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('save_csv', {
+        path: filePath,
+        encoding,
+        lineEnding,
+        delimiter: delimiter || null,
+      });
+      return;
     }
 
     const { bytes, text } = await sendWorkerMessage<{ bytes?: Uint8Array; text: string }>('EXPORT_CSV', {
@@ -748,6 +744,7 @@ export class TauriBridge {
       delimiter,
     });
 
+    const fileName = filePath.split(/[\\/]/).pop() || 'export.csv';
     const isTsv = delimiter === '\t' || fileName.toLowerCase().endsWith('.tsv');
     const charsetMap: Record<SupportedEncoding, string> = {
       'UTF-8': 'utf-8',
@@ -775,5 +772,35 @@ export class TauriBridge {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+
+  /**
+   * OSネイティブのファイル選択ダイアログを開き、選択されたファイルの絶対パスを取得
+   */
+  static async selectFileDialog(): Promise<string | null> {
+    if (isTauriEnv()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        return await invoke<string | null>('select_file_dialog');
+      } catch (err) {
+        console.warn('select_file_dialog failed:', err);
+      }
+    }
+    return null;
+  }
+
+  /**
+   * OSネイティブのファイル保存ダイアログを開き、指定された保存先絶対パスを取得
+   */
+  static async selectSaveFileDialog(defaultName?: string): Promise<string | null> {
+    if (isTauriEnv()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        return await invoke<string | null>('select_save_file_dialog', { defaultName: defaultName || null });
+      } catch (err) {
+        console.warn('select_save_file_dialog failed:', err);
+      }
+    }
+    return null;
   }
 }

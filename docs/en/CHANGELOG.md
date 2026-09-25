@@ -10,6 +10,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Windows File Lock Release on Overwrite Save & Absolute Path Resolution (`io.rs`, `main.rs`, `tauriBridge.ts`, `App.tsx`, `SaveModal.tsx`)**:
+  - Resolved Windows OS Error 1224 (`ERROR_USER_MAPPED_FILE`) by writing to a temporary file, releasing the `mmap` handle, performing atomic rename, and reopening/resynchronizing row caches.
+  - Implemented automatic parent directory fallback resolution when relative paths or bare filenames are passed.
+  - Added Windows native file open dialog (`select_file_dialog`) and "Browse..." folder selection button in SaveModal.
+  - Fixed white-screen rendering glitch immediately after saving by synchronizing chunk re-fetching via `cacheVersion`.
+- **Empty Line Elimination & First Row Data Preservation on Header Toggle (`io.rs`, `VirtualTable.tsx`)**:
+  - Eliminated extra newline insertions on "First row is header" toggling and purged stale client caches on header changes to prevent missing first rows.
+- **Keyboard Arrow Key Cell Navigation & Automatic Viewport Scroll Tracking (`VirtualTable.tsx`)**:
+  - Added automatic container focus on cell, row number, and container click, and upon file load, preventing browser default window scroll and ensuring reliable active cell navigation.
+  - Extended `ensureCellVisible` to support horizontal column tracking when navigating with `Left` / `Right` arrow keys.
+- **Mouse Caret Positioning & Deselection on In-Place Cell Editing (`VirtualTable.tsx`)**:
+  - Added `stopPropagation` on cell editor `<input>` mouse events to prevent parent cell selection logic and `preventDefault()` from blocking native text caret placement, deselection, and mouse drag selection.
+
+### Refactored
+- **Modular Architecture Refactoring (All Source Files Under 1,000 Lines)**:
+  - `VirtualTable.tsx` (1,549 lines → 840 lines): Separated concerns into specialized submodules for column resizing (`useColumnResize`), clipboard TSV operations (`useTableClipboard`), sticky header (`TableHeader`), virtual row/cell rendering (`TableRow`), and search highlighting (`textHighlight`).
+  - `App.tsx` (1,404 lines → 489 lines): Decomposed monolithic application state into four domain custom hooks: history management (`useHistoryManager`), file I/O & D&D (`useFileOperations`), table structure & cell mutations (`useTableOperations`), and search/replace logic (`useSearchOperations`).
+  - `csvWorker.ts` (1,387 lines → 336 lines): Refactored Web Worker implementation into single-responsibility modules matching the Rust backend architecture (`workerTypes`, `workerEncoding`, `workerParser`, `workerSearch`, `workerGrid`).
+
 ---
 
 ## [1.2.0] - 2026-09-02

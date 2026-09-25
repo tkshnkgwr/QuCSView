@@ -367,3 +367,30 @@ fn test_header_toggle_preserves_first_row_data() {
     assert_eq!(meta_hdr.headers, vec!["HeaderCol1", "HeaderCol2"]);
     assert_eq!(engine.get_cell_value(0, 0), "DataRow1Col1");
 }
+
+#[test]
+fn test_save_to_same_file_while_mmap_open() {
+    let csv_data = "ID,Name\r\n1,Alice\r\n2,Bob\r\n";
+    let temp_file = create_test_csv(csv_data);
+    let path = temp_file.path().to_path_buf();
+    let mut engine = CsvEngine::new();
+    engine.open_file(&path, None).unwrap();
+    engine.update_cell(0, 1, "Charlie".to_string());
+    assert!(engine.get_metadata().is_dirty);
+
+    let res = engine.save_to_file(
+        &path,
+        SupportedEncoding::Utf8,
+        SupportedLineEnding::CRLF,
+        None,
+    );
+    assert!(res.is_ok());
+
+    // 保存後、エンジン内部のセル値が更新され、is_dirty が false にリセットされていること
+    assert_eq!(engine.get_cell_value(0, 1), "Charlie");
+    assert!(!engine.get_metadata().is_dirty);
+
+    // 実際のファイル内容も書き換わっていること
+    let disk_content = std::fs::read_to_string(&path).unwrap();
+    assert_eq!(disk_content, "ID,Name\r\n1,Charlie\r\n2,Bob\r\n");
+}

@@ -26,17 +26,17 @@
 
 ### 3.1 Opening Files (Drag & Drop & Recent History)
 - **Drag & Drop**: Drag CSV/TSV files from File Explorer directly onto the QuCSView window (displays a full-window animated drop overlay). You can drop new files even while a table is already open.
-- **Toolbar / Shortcut**: Click **Open** or press **`Ctrl + O`**.
+- **Toolbar / Shortcut**: Click **Open** or press **`Ctrl + O`** to invoke the Windows native file open dialog with guaranteed full absolute path preservation.
 - **Recent Files**: Click the **History** menu in the Title Bar to reload any of the last 10 opened files with a single click.
 
 ### 3.2 Navigation & 2D Virtual Scrolling
 - **2D Virtual Scrolling**: Both vertical rows and horizontal columns are dynamically virtualized, delivering butter-smooth 60/120fps scrolling even on massive CSVs with 200+ columns.
-- **Keyboard**: Use Arrow keys (`↑`, `↓`, `←`, `→`), `PageUp`, and `PageDown` to navigate.
+- **Keyboard Navigation**: Click any cell or load a file to begin navigating immediately with Arrow keys (`↑`, `↓`, `←`, `→`). Both vertical and horizontal viewport scrolling automatically follow cursor movement. Use `PageUp` and `PageDown` to jump full screens.
 - **Sticky Row Index**: The leftmost `#` row index column stays anchored on horizontal scrolling.
 - **Auto-Fit Column Width**: **Double-click** the right border of any column header to automatically resize the column to fit its longest text content.
 
 ### 3.3 Direct In-Place Cell Editing & TSV Copy/Paste
-1. **Cell Editing**: Double-click any cell or press **`Enter` / `F2`**. Unsaved edited cells are marked with an orange corner triangle.
+1. **Cell Editing**: Double-click any cell or press **`Enter` / `F2`**. Initial edit selects all text, while clicking between characters places the cursor precisely and allows standard mouse drag selection. Unsaved edited cells are marked with an orange corner triangle.
 2. **TSV Copy**: Select cells or rows and press **`Ctrl + C`** to copy TSV-formatted data to the clipboard in 0ms.
 3. **Rectangular Paste**: Press **`Ctrl + V`** to paste 2D clipboard data starting from the active cell (Undo-supported).
 4. **Undo / Redo**: Press **`Ctrl + Z`** to revert cell edits, pastes, replacements, or row/column modifications. Press **`Ctrl + Y`** (or `Ctrl + Shift + Z`) to redo.
@@ -48,9 +48,10 @@
 3. **Find & Replace (`Ctrl + H`)**: Open the replacement dialog to execute single or batch regex replacements with capture groups (`$1`).
 4. Click the **Filter** button in the search bar to isolate matching rows while maintaining the **original physical file row numbers**.
 
-### 3.5 Encoding & Line-Ending Conversion
+### 3.5 Encoding & Line-Ending Conversion and Saving
 - Select the desired encoding (`UTF-8`, `Shift_JIS`, `EUC-JP`) and line ending (`CRLF`, `LF`) from the toolbar dropdowns.
-- Press **`Ctrl + S`** to save changes safely.
+- Press **`Ctrl + S`** to safely overwrite the original file in place (atomic replacement without file-lock errors).
+- Press **`Ctrl + Shift + S`** (or Save As) to choose an encoding, line ending, and use the "Browse..." button to select any destination folder and filename via native Windows dialogs.
 
 ---
 

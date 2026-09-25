@@ -31,6 +31,7 @@ interface ToolbarProps {
   hasHeader: boolean;
   onToggleHasHeader: (val: boolean) => void;
   onOpenFile: (file: File) => void;
+  onTriggerOpenFile?: () => void;
   onSaveFile: () => void;
   onDelimiterChange?: (delimiter: SupportedDelimiter) => void;
   onEncodingChange?: (encoding: SupportedEncoding) => void;
@@ -62,6 +63,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   hasHeader,
   onToggleHasHeader,
   onOpenFile,
+  onTriggerOpenFile,
   onSaveFile,
   onEncodingChange,
   viewMode,
@@ -130,7 +132,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       <div className="flex items-center gap-2 flex-wrap">
         <button
           id="btn-open-file"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => {
+            if (onTriggerOpenFile) {
+              onTriggerOpenFile();
+            } else {
+              fileInputRef.current?.click();
+            }
+          }}
           className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded border border-blue-500 font-medium transition-colors shadow-xs active:scale-95 cursor-pointer"
           title="CSV/TSVファイルを開く (Ctrl+O)"
         >

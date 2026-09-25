@@ -362,71 +362,131 @@ impl CsvEngine {
     }
 
     /// 指定エンコーディングと改行コード、区切り文字でファイル保存
+    /// 指定エンコーディングと改行コード、区切り文字でファイル保存（アトミック保存 & mmapロック解除）
     pub fn save_to_file<P: AsRef<Path>>(
-        &self,
+        &mut self,
         path: P,
         encoding: SupportedEncoding,
         line_ending: SupportedLineEnding,
         custom_delimiter: Option<u8>,
     ) -> anyhow::Result<()> {
-        let mut file = File::create(path)?;
+        let path_ref = path.as_ref();
         let out_delim = custom_delimiter.unwrap_or(self.delimiter);
         let le_str = match line_ending {
             SupportedLineEnding::CRLF => "\r\n",
             SupportedLineEnding::LF => "\n",
         };
 
-        if matches!(encoding, SupportedEncoding::Utf8Bom) {
-            file.write_all(&[0xEF, 0xBB, 0xBF])?;
+        // 一時ファイルパス（同一ディレクトリに配置することでアトミック置換を可能にする）
+        let parent_dir = path_ref.parent().unwrap_or_else(|| Path::new("."));
+        let temp_filename = format!(
+            ".qucs_save_tmp_{}_{}.tmp",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_nanos()
+        );
+        let temp_path = parent_dir.join(temp_filename);
+
+        {
+            let mut file = File::create(&temp_path)?;
+
+            if matches!(encoding, SupportedEncoding::Utf8Bom) {
+                file.write_all(&[0xEF, 0xBB, 0xBF])?;
+            }
+
+            let mut write_row = |cells: &[String]| -> anyhow::Result<()> {
+                let mut line = String::new();
+                for (idx, cell) in cells.iter().enumerate() {
+                    if idx > 0 {
+                        line.push(out_delim as char);
+                    }
+                    if cell.contains(out_delim as char)
+                        || cell.contains('"')
+                        || cell.contains('\n')
+                        || cell.contains('\r')
+                    {
+                        line.push('"');
+                        line.push_str(&cell.replace('"', "\"\""));
+                        line.push('"');
+                    } else {
+                        line.push_str(cell);
+                    }
+                }
+                line.push_str(le_str);
+
+                match encoding {
+                    SupportedEncoding::Utf8 | SupportedEncoding::Utf8Bom => {
+                        file.write_all(line.as_bytes())?;
+                    }
+                    SupportedEncoding::ShiftJis => {
+                        let (cow, _, _) = encoding_rs::SHIFT_JIS.encode(&line);
+                        file.write_all(&cow)?;
+                    }
+                    SupportedEncoding::EucJp => {
+                        let (cow, _, _) = encoding_rs::EUC_JP.encode(&line);
+                        file.write_all(&cow)?;
+                    }
+                }
+                Ok(())
+            };
+
+            if self.has_header && !self.headers.is_empty() {
+                write_row(&self.headers)?;
+            }
+
+            for row_idx in 0..self.total_rows {
+                let row_cells = self.get_row_data(row_idx)?;
+                write_row(&row_cells)?;
+            }
+
+            file.flush()?;
         }
 
-        let mut write_row = |cells: &[String]| -> anyhow::Result<()> {
-            let mut line = String::new();
-            for (idx, cell) in cells.iter().enumerate() {
-                if idx > 0 {
-                    line.push(out_delim as char);
-                }
-                if cell.contains(out_delim as char)
-                    || cell.contains('"')
-                    || cell.contains('\n')
-                    || cell.contains('\r')
-                {
-                    line.push('"');
-                    line.push_str(&cell.replace('"', "\"\""));
-                    line.push('"');
-                } else {
-                    line.push_str(cell);
-                }
+        // 保存先が現在開いているファイル（あるいは上書き対象）の場合、
+        // Windows では mmap がファイルロックを保持しているため、mmap を明示的にアンマップする
+        let is_same_file = if let Some(ref current_path) = self.file_path {
+            if let (Ok(p1), Ok(p2)) = (
+                std::fs::canonicalize(current_path),
+                std::fs::canonicalize(path_ref),
+            ) {
+                p1 == p2
+            } else {
+                current_path == path_ref
             }
-            line.push_str(le_str);
-
-            match encoding {
-                SupportedEncoding::Utf8 => {
-                    file.write_all(line.as_bytes())?;
-                }
-                SupportedEncoding::Utf8Bom => {
-                    file.write_all(line.as_bytes())?;
-                }
-                SupportedEncoding::ShiftJis => {
-                    let (cow, _, _) = encoding_rs::SHIFT_JIS.encode(&line);
-                    file.write_all(&cow)?;
-                }
-                SupportedEncoding::EucJp => {
-                    let (cow, _, _) = encoding_rs::EUC_JP.encode(&line);
-                    file.write_all(&cow)?;
-                }
-            }
-            Ok(())
+        } else {
+            false
         };
 
-        if self.has_header && !self.headers.is_empty() {
-            write_row(&self.headers)?;
+        if is_same_file {
+            self.mmap = None;
         }
 
-        for row_idx in 0..self.total_rows {
-            let row_cells = self.get_row_data(row_idx)?;
-            write_row(&row_cells)?;
+        // Windows では既存ファイルへの上書き rename が失敗する場合があるため、既存ファイルを削除して rename
+        if path_ref.exists() {
+            let mut removed = false;
+            for _ in 0..5 {
+                if std::fs::remove_file(path_ref).is_ok() {
+                    removed = true;
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            if !removed && path_ref.exists() {
+                if let Err(e) = std::fs::rename(&temp_path, path_ref) {
+                    let _ = std::fs::remove_file(&temp_path);
+                    return Err(anyhow::anyhow!("Failed to overwrite file: {}", e));
+                }
+            } else {
+                std::fs::rename(&temp_path, path_ref)?;
+            }
+        } else {
+            std::fs::rename(&temp_path, path_ref)?;
         }
+
+        // 保存したファイルでエンジンを再初期化（mmap再構築 & 編集マーククリア）
+        self.open_file(path_ref, Some(out_delim as char))?;
+        self.modified_cells.clear();
 
         Ok(())
     }
