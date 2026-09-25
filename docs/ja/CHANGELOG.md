@@ -9,6 +9,8 @@
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-09-25
+
 ### 修正 (Fixed)
 - **Windows上書き保存時のファイルロック解除と保存パス完全解決 (`io.rs`, `main.rs`, `tauriBridge.ts`, `App.tsx`, `SaveModal.tsx`)**:
   - Windows OS Error 1224 (`ERROR_USER_MAPPED_FILE`) 対策として、一時ファイル書き出し ＋ `mmap` メモリマップ解除 ＋ アトミック置換 ＋ 再オープン・行キャッシュ同期処理を実装。

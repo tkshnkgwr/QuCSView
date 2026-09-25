@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-09-25
+
 ### Fixed
 - **Windows File Lock Release on Overwrite Save & Absolute Path Resolution (`io.rs`, `main.rs`, `tauriBridge.ts`, `App.tsx`, `SaveModal.tsx`)**:
   - Resolved Windows OS Error 1224 (`ERROR_USER_MAPPED_FILE`) by writing to a temporary file, releasing the `mmap` handle, performing atomic rename, and reopening/resynchronizing row caches.
