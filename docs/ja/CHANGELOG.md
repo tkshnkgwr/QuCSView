@@ -9,6 +9,14 @@
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-10-27
+
+### 変更 (Changed)
+- **オープンソースライセンスを GPL-3.0-or-later へ変更 (`LICENSE`, `package.json`, `Cargo.toml`, `README.md`, `README_JA.md`, `HelpModal.tsx`)**:
+  - ソフトウェアの自由と永続的なオープン性を保証するため、ライセンスを MIT License から **GNU General Public License v3.0 or later (GPL-3.0-or-later)** へ移行。
+
+---
+
 ## [1.2.2] - 2026-10-27
 
 ### 修正 (Fixed)

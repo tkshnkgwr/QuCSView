@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-10-27
+
+### Changed
+- **Transition License to GPL-3.0-or-later (`LICENSE`, `package.json`, `Cargo.toml`, `README.md`, `README_JA.md`, `HelpModal.tsx`)**:
+  - Relicensed the project from MIT License to **GNU General Public License v3.0 or later (GPL-3.0-or-later)** to guarantee software freedom and open-source availability.
+
+---
+
 ## [1.2.2] - 2026-10-27
 
 ### Fixed

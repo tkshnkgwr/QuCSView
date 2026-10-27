@@ -443,7 +443,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
         <div className="flex items-center justify-between px-4 py-2.5 border-t border-gray-200 dark:border-[#2D3139] bg-gray-100 dark:bg-[#14171C] text-[11px] text-gray-600 dark:text-gray-400">
           <div className="flex items-center gap-2">
             <Info className="w-3.5 h-3.5 text-gray-500" />
-            <span>QuCSView Desktop Engine • MIT License</span>
+            <span>QuCSView Desktop Engine • GPL-3.0-or-later</span>
           </div>
           <button
             id="btn-help-dialog-ok"
