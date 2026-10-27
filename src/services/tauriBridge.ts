@@ -501,11 +501,11 @@ export class TauriBridge {
         console.warn('Tauri get_raw_text failed, falling back to WebWorker:', err);
       }
     }
-    const res = await sendWorkerMessage<{ text: string }>('GET_CURRENT_TEXT', {
+    const res = await sendWorkerMessage<{ text?: string } | string>('GET_CURRENT_TEXT', {
       lineEnding,
       delimiter,
     });
-    return res.text;
+    return typeof res === 'string' ? res : res.text || '';
   }
 
   /**

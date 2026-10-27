@@ -10,7 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.2.1] - 2026-09-25
+## [1.2.2] - 2026-10-27
+
+### Fixed
+- **Native Column Sorting & TSV Export in Rust Backend (`grid.rs`, `main.rs`, `tests.rs`)**:
+  - Implemented column sorting support in `get_rows_slice` and `get_range_tsv`. Retains 100% zero-type-mutation (no type casting) while evaluating numeric/currency/percentage values and natural string comparisons with empty cells pinned to the bottom.
+- **Encoding Preservation on Manual Reload (`io.rs`, `grid.rs`, `tests.rs`)**:
+  - Resolved an issue in `set_encoding` where user-specified encodings were overwritten by auto-detection in `open_file`. Added `open_file_with_encoding` to respect forced encodings across reload and save cycles.
+- **CSV Cell Escaping & Header Flag Preservation in Raw Text / Split Operations (`io.rs`)**:
+  - Implemented RFC-compliant cell escaping for delimiters, quotes, and newlines in `get_raw_text` and `split_csv`, and ensured `split_csv` respects the `has_header` flag.
+- **Always-on-Top Native Window Binding (`main.rs`, `App.tsx`)**:
+  - Added native `set_always_on_top` IPC command and wired the TitleBar pin toggle button to Tauri's window management.
+- **Status Bar & Modal Props Wiring and Web Worker Shape Alignment (`App.tsx`, `csvWorker.ts`, `tauriBridge.ts`, `workerGrid.ts`)**:
+  - Restored unsaved modifications count and active filter count badges on `StatusBar`, passed active search state to `FindReplaceModal`, and unified response objects for `GET_CURRENT_TEXT` and `OPEN_FILE_BUFFER`.
+- **Legacy Name Clean-Up and Strict Markdown Table Alignment (`docs/`, `RULES.md`)**:
+  - Completely purged outdated legacy project naming (`QuCSVPreview`) in favor of `QuCSView`, and ensured strict vertical Markdown table pipe alignment across all documents.
 
 ### Fixed
 - **Windows File Lock Release on Overwrite Save & Absolute Path Resolution (`io.rs`, `main.rs`, `tauriBridge.ts`, `App.tsx`, `SaveModal.tsx`)**:

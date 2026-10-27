@@ -355,7 +355,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
                   主要なキーボード操作一覧
                 </span>
                 <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
-                  全17ショートカット対応
+                  全{SHORTCUTS.length}ショートカット対応
                 </span>
               </div>
 

@@ -25,7 +25,7 @@ Future development focuses on enhanced spreadsheet-like editing ergonomics (rect
 | **Data Quality**     | Selection Quick Stats Preview (Sum, Avg, Count, Min, Max)   | 🟡 **Medium**   | ✅ **Completed**     | v1.1.0         |
 | **Usability**        | Recent Files History & Quick Reload                         | 🟢 **Low / Ext**| ✅ **Completed**     | v1.1.0         |
 | **Sorting**          | Multi-Column Composite Sorting via Shift+Click              | 🟡 **Medium**   | 📋 Proposed (TODO)   | v1.2.0         |
-| **Data Quality**     | Duplicate Rows / Values Detection & Color Highlighting       | 🟡 **Medium**   | 📋 Proposed (TODO)   | v1.2.0         |
+| **Data Quality**     | Duplicate Rows / Values Detection & Color Highlighting      | 🟡 **Medium**   | 📋 Proposed (TODO)   | v1.2.0         |
 | **UI & Operations**  | Drag-and-Drop Column Header Reordering                      | 🟡 **Medium**   | 📋 Proposed (TODO)   | v1.3.0         |
 | **File Operations**  | High-Speed Multi-CSV Merging & Combined Export              | 🟡 **Medium**   | 📋 Proposed (TODO)   | v1.3.0         |
 | **Data Comparison**  | Cell-by-Cell Visual CSV Difference Comparison (CSV Diff)    | 🟡 **Medium**   | 📋 Proposed (TODO)   | v1.3.0         |

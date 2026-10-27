@@ -18,13 +18,14 @@ This project complies with **Semantic Versioning 2.0.0** (`MAJOR.MINOR.PATCH`, e
 
 When releasing a new version, the following files are synchronized:
 
-| Item                     | Location                                  |
-| :----------------------- | :---------------------------------------- |
-| Frontend Standard Version| [`package.json`](../../package.json)      |
-| Rust Crate Version       | [`src-tauri/Cargo.toml`](../../src-tauri/Cargo.toml) |
-| Tauri Application Config | [`src-tauri/tauri.conf.json`](../../src-tauri/tauri.conf.json) |
-| Japanese Changelog       | [`docs/ja/CHANGELOG.md`](../ja/CHANGELOG.md) |
-| English Changelog        | [`docs/en/CHANGELOG.md`](CHANGELOG.md)    |
+| Item                      | Location                                                       |
+| :------------------------ | :------------------------------------------------------------- |
+| Frontend Standard Version | [`package.json`](../../package.json)                           |
+| Rust Crate Version        | [`src-tauri/Cargo.toml`](../../src-tauri/Cargo.toml)           |
+| Tauri Application Config  | [`src-tauri/tauri.conf.json`](../../src-tauri/tauri.conf.json) |
+| App Version Constant      | [`src/version.ts`](../../src/version.ts)                       |
+| Japanese Changelog        | [`docs/ja/CHANGELOG.md`](../ja/CHANGELOG.md)                   |
+| English Changelog         | [`docs/en/CHANGELOG.md`](CHANGELOG.md)                         |
 
 ---
 
@@ -66,9 +67,9 @@ npm run release major
 
 ### Git Commit, Tag & Push
 ```bash
-git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json
-git commit -m "release: bump version to v0.1.1"
-git tag v0.1.1
+git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json src/version.ts
+git commit -m "release: bump version to v1.2.1"
+git tag v1.2.1
 git push origin main
-git push origin v0.1.1
+git push origin v1.2.1
 ```

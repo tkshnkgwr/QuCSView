@@ -187,6 +187,20 @@ export default function App() {
     setActiveCellValue(value);
   }, []);
 
+  // 常時最前面表示 (Always on Top) 切替
+  const handleToggleAlwaysOnTop = useCallback(async () => {
+    const nextVal = !alwaysOnTop;
+    setAlwaysOnTop(nextVal);
+    if (isTauriEnv()) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('set_always_on_top', { alwaysOnTop: nextVal });
+      } catch (err) {
+        console.warn('Failed to set always on top:', err);
+      }
+    }
+  }, [alwaysOnTop]);
+
   // グローバルドラッグ＆ドロップおよびキーボードショートカット (F1, Ctrl+S, Ctrl+O, Ctrl+F 等)
   useEffect(() => {
     let dragCounter = 0;
@@ -313,7 +327,7 @@ export default function App() {
       <TitleBar
         metadata={metadata}
         alwaysOnTop={alwaysOnTop}
-        onToggleAlwaysOnTop={() => setAlwaysOnTop(!alwaysOnTop)}
+        onToggleAlwaysOnTop={handleToggleAlwaysOnTop}
         themeMode={themeMode}
         onThemeChange={setThemeMode}
         onOpenHelp={() => setIsHelpOpen(true)}
@@ -330,7 +344,9 @@ export default function App() {
         onOpenFile={handleOpenFile}
         onTriggerOpenFile={handleTriggerOpenFile}
         onSaveFile={handleSaveFile}
+        onDelimiterChange={handleDelimiterChange}
         onEncodingChange={handleEncodingChange}
+        onLineEndingChange={handleLineEndingChange}
         viewMode={viewMode}
         onToggleViewMode={handleToggleViewMode}
         modifiedCount={modifiedCells.size}
@@ -445,11 +461,10 @@ export default function App() {
         metadata={metadata}
         activeCell={activeCell}
         activeCellValue={activeCellValue}
-        hasHeader={hasHeader}
+        isFilterActive={searchState.filterMode}
+        filteredCount={matchedRowIndices.length}
+        modifiedCount={modifiedCells.size}
         selectionStats={selectionStats}
-        onEncodingChange={handleEncodingChange}
-        onLineEndingChange={handleLineEndingChange}
-        onDelimiterChange={handleDelimiterChange}
       />
 
       {/* 5. 各種モーダル */}
@@ -465,7 +480,6 @@ export default function App() {
           isOpen={isSplitModalOpen}
           onClose={() => setIsSplitModalOpen(false)}
           metadata={metadata}
-          filterIndices={searchState.filterMode ? matchedRowIndices : null}
         />
       )}
       {metadata && (
@@ -473,8 +487,10 @@ export default function App() {
           isOpen={isFindReplaceOpen}
           onClose={() => setIsFindReplaceOpen(false)}
           metadata={metadata}
-          currentMatchIndex={searchState.currentIndex}
-          totalMatches={searchState.matches.length}
+          initialQuery={searchState.query}
+          initialUseRegex={searchState.useRegex}
+          initialCaseSensitive={searchState.caseSensitive}
+          initialColumnFilter={searchState.columnFilter}
           onFindNext={handleFindNextInModal}
           onFindPrev={handleFindPrevInModal}
           onReplaceCurrent={handleReplaceCurrentInModal}

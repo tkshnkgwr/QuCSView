@@ -9,7 +9,21 @@
 
 ## [Unreleased]
 
-## [1.2.1] - 2026-09-25
+## [1.2.2] - 2026-10-27
+
+### 修正 (Fixed)
+- **Rustバックエンドでのカラムソートおよびソート状態TSV抽出のネイティブ対応 (`grid.rs`, `main.rs`, `tests.rs`)**:
+  - `get_rows_slice` および `get_range_tsv` で `sort_config` 引数が無視されていた問題を改修。ゼロ型破壊（型キャストなし）を厳格に維持したまま、通貨・カンマ・パーセント考慮の数値比較および自然順ソートによる高速スライス返却を実装。
+- **文字コード手動再デコード時の設定維持 (`io.rs`, `grid.rs`, `tests.rs`)**:
+  - `set_encoding` 実行時に自動判定（`detect_format`）によって指定文字コードが上書きされていた問題を修正し、`open_file_with_encoding` により指定エンコーディングを確実に維持するよう改善。
+- **生テキスト出力・分割エクスポート時のセルエスケープ及びヘッダー設定反映 (`io.rs`)**:
+  - `get_raw_text` および `split_csv` でカンマ・クォート・改行を含むセルのRFC準拠エスケープ処理を実装し、`split_csv` でヘッダーなしフラグを正しく尊重するよう修正。
+- **タイトルバー「最前面固定 (Always-on-Top)」のネイティブ連携 (`main.rs`, `App.tsx`)**:
+  - タイトルバーのピン留めボタンが Tauri ネイティブウィンドウ API（`set_always_on_top`）と正しく連動するようIPCハンドラを実装。
+- **ステータスバー・モーダル Props 連携および Web Worker 戻り値の整合性修正 (`App.tsx`, `csvWorker.ts`, `tauriBridge.ts`, `workerGrid.ts`)**:
+  - `StatusBar` の未保存編集件数・絞り込み行数バッジの表示復旧、`FindReplaceModal` への検索状態引き継ぎ、および Web Worker の `GET_CURRENT_TEXT` レスポンス形式と `OPEN_FILE_BUFFER` の `rawText` 同期を修正。
+- **ドキュメント全体での旧名称一掃と Markdown テーブル垂直整列の完全適合 (`docs/`, `RULES.md`)**:
+  - プロジェクト全体に残存していた旧名称 `QuCSVPreview` を `QuCSView` に完全統一し、すべての Markdown テーブルの垂直配置（gVim 視認性）を適合。
 
 ### 修正 (Fixed)
 - **Windows上書き保存時のファイルロック解除と保存パス完全解決 (`io.rs`, `main.rs`, `tauriBridge.ts`, `App.tsx`, `SaveModal.tsx`)**:

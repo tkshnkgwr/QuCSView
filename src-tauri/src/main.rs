@@ -428,6 +428,12 @@ fn start_dragging(window: tauri::Window) {
     let _ = window.start_dragging();
 }
 
+/// ウィンドウの常時最前面表示（Always on Top）を設定
+#[tauri::command]
+fn set_always_on_top(always_on_top: bool, window: tauri::Window) {
+    let _ = window.set_always_on_top(always_on_top);
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(AppState {
@@ -463,7 +469,8 @@ fn main() {
             minimize_window,
             toggle_maximize_window,
             start_dragging,
+            set_always_on_top,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running QuCSVPreview tauri application");
+        .expect("error while running QuCSView tauri application");
 }

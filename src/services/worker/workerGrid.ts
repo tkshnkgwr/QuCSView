@@ -509,6 +509,7 @@ export function splitFileWorker(
 
   return {
     totalChunks: chunks.length,
+    totalRows,
     chunks,
   };
 }

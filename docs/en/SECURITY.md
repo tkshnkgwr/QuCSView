@@ -6,7 +6,7 @@
 
 ## 1. Security Architecture & Scopes
 
-QuCSVPreview is engineered to operate exclusively on local files explicitly selected by the user.
+QuCSView is engineered to operate exclusively on local files explicitly selected by the user.
 
 1. **Sandboxing & IPC Capabilities**:
    - Tauri v2 fine-grained permissions restrict filesystem access strictly to the targeted workspace/file without unrestricted system command execution.
@@ -19,9 +19,9 @@ QuCSVPreview is engineered to operate exclusively on local files explicitly sele
 
 If you discover a potential security vulnerability or data loss issue, please do not open a public issue. Instead, report it privately:
 
-- **Security Email**: `security@qucsvpreview.example.com`
+- **Security Email**: `security@qucsview.example.com`
 - **Include**:
-  - Version affected (e.g. v0.1.0)
+  - Version affected (e.g. v1.2.1)
   - Proof of Concept (PoC) or reproduction steps
   - Estimated impact
 

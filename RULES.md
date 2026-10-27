@@ -32,17 +32,28 @@
 - **ボスの記述に対する自律補正（フェイルセーフ）**:
   - ボスが指示やメモ等でうっかり生パス（`C:\Users\...` 等）を直接記述された場合、AI側はそれを鵜呑みにして生パスのまま出力・保存せず、**必ず自律的に環境変数を使った記述（`%USERPROFILE%\...` 等）へ修正・補正して記録・保存すること**。
 
+## 🛠️ 6. 高速CLIツール（ripgrep / fd / jq）の標準利用原則
+
+- **ソースコード・テキスト全文検索**:
+  - コードベースやドキュメントの探索には、遅い `grep` や PowerShell `Select-String` ではなく、世界最速の **`ripgrep` (`rg`)** を最優先で使用すること。
+  - **Git管理下ファイル・巨大ビルド成果物（`target/`, `node_modules/`等）の検索**:
+    - 巨大なビルド中間ファイルやキャッシュによる走査スタックを防止するため、Git管理下ファイルの検索には **`git grep`** を最優先で使用するか、検索対象ディレクトリ（`src/`, `docs/` 等）を個別指定して実行すること。
+- **ファイル名・ディレクトリ探索**:
+  - ファイルやディレクトリの検索・特定には、遅い再帰探索（`Get-ChildItem -Recurse` や `find`）ではなく、超高速な **`fd`** を最優先で使用すること（隠しフォルダを含む場合は `-H`、全無制限は `-uu`）。
+- **JSONデータ処理・抽出**:
+  - APIレスポンスやCLI出力、設定ファイル等のJSONデータの加工・抽出・整形には、**`jq`** を優先的に活用すること。
+
 ---
 
 ## 🧰 ワークスペース・スキル一覧
 
-| スキル名             | 役割・トリガー条件                                                      | 参照先                                                                          |
-| :------------------- | :---------------------------------------------------------------------- | :------------------------------------------------------------------------------ |
-| `tauri-verification` | Rust/フロントエンド変更時の事前検証 (`cargo`/`npm`) とMarkdown検証省略 | [.agents/skills/tauri-verification/SKILL.md](file:///.agents/skills/tauri-verification/SKILL.md) |
-| `git-commit`         | ボスから明示的なコミット・Push指示があった際の安全実行手順・規約        | [.agents/skills/git-commit/SKILL.md](file:///.agents/skills/git-commit/SKILL.md)               |
-| `markdown-table`     | Markdown テーブル作成・編集時の垂直整列ガイド（gVim視認性）             | [.agents/skills/markdown-table/SKILL.md](file:///.agents/skills/markdown-table/SKILL.md)       |
-| `mermaid-diagram`    | ドキュメント・設計書内での Mermaid による作図・視覚化ガイドライン        | [.agents/skills/mermaid-diagram/SKILL.md](file:///.agents/skills/mermaid-diagram/SKILL.md)     |
-| `release-automation` | ボスから「リリースして」と指示された際の一括バージョン同期・リリース   | [.agents/skills/release-automation/SKILL.md](file:///.agents/skills/release-automation/SKILL.md) |
+| スキル名             | 役割・トリガー条件                                                      | 参照先                                                                                           |
+| :------------------- | :---------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------- |
+| `tauri-verification` | Rust/フロントエンド変更時の事前検証 (`cargo`/`npm`) とMarkdown検証省略  | [.agents/skills/tauri-verification/SKILL.md](file:///.agents/skills/tauri-verification/SKILL.md) |
+| `git-commit`         | ボスから明示的なコミット・Push指示があった際の安全実行手順・規約        | [.agents/skills/git-commit/SKILL.md](file:///.agents/skills/git-commit/SKILL.md)                 |
+| `markdown-table`     | Markdown テーブル作成・編集時の垂直整列ガイド（gVim視認性）             | [.agents/skills/markdown-table/SKILL.md](file:///.agents/skills/markdown-table/SKILL.md)         |
+| `mermaid-diagram`    | ドキュメント・設計書内での Mermaid による作図・視覚化ガイドライン       | [.agents/skills/mermaid-diagram/SKILL.md](file:///.agents/skills/mermaid-diagram/SKILL.md)       |
+| `release-automation` | ボスから「リリースして」と指示された際の一括バージョン同期・リリース    | [.agents/skills/release-automation/SKILL.md](file:///.agents/skills/release-automation/SKILL.md) |
 
 ---
 

@@ -24,7 +24,7 @@ node scripts/release.js patch
 # （tauri-verification スキルの手順に従って Rust / TS の検証を完了）
 
 # 3. バージョン更新ファイルのコミット
-git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json
+git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json src/version.ts
 git commit -m "release: vX.Y.Z リリース"
 
 # 4. タグの作成と Push

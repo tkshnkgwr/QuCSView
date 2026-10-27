@@ -51,7 +51,7 @@ cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 
 ### Generate API Documentation
 ```bash
-# TypeDoc (TypeScript API) -> docs/api/
+# TypeDoc (TypeScript API) -> target/doc/ts/
 npm run doc
 
 # Rustdoc (Rust Backend API) -> src-tauri/target/doc/

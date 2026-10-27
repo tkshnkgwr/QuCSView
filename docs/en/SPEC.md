@@ -6,13 +6,13 @@
 
 ## 1. Overview
 
-| Field | Description |
-| :--- | :--- |
-| **Application Name** | QuCSView (Quick & Minimal CSV Previewer & Cell Editor) |
-| **Concept** | Modern revival of the classic Japanese editor "ViVi" table view & in-place editing, combined with 100% protection against Excel's destructive automatic type mutations |
-| **Target Platform** | Windows 10 / 11 (x64 / ARM64) |
-| **Tech Stack** | Rust (Tauri v2) / React 19 / TypeScript / Tailwind CSS / memmap2 |
-| **Resource Goals** | 500MB File Load `< 1.0s`, Idle RAM `< 40MB`, CPU Usage `< 0.1%` |
+| Field                | Description                                                                                                                                                            |
+| :------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Application Name** | QuCSView (Quick & Minimal CSV Previewer & Cell Editor)                                                                                                                 |
+| **Concept**          | Modern revival of the classic Japanese editor "ViVi" table view & in-place editing, combined with 100% protection against Excel's destructive automatic type mutations |
+| **Target Platform**  | Windows 10 / 11 (x64 / ARM64)                                                                                                                                          |
+| **Tech Stack**       | Rust (Tauri v2) / React 19 / TypeScript / Tailwind CSS / memmap2                                                                                                       |
+| **Resource Goals**   | 500MB File Load `< 1.0s`, Idle RAM `< 40MB`, CPU Usage `< 0.1%`                                                                                                        |
 
 ---
 
@@ -62,24 +62,16 @@ When opening tabular data in Microsoft Excel, multiple destructive auto-conversi
 +----------------------------------------------------------------------------------------------------+
 ```
 
-### 4.1 Sticky Row Index Column & Full Row Selection
-- Horizontal scrolling freezes the leftmost row index column (`#`) using `position: sticky; left: 0;`.
-- Clicking on a row number immediately selects the entire row with high-contrast accent highlights.
-
-### 4.2 TSV Clipboard Copy (`Ctrl + C`)
+### 4.1 TSV Clipboard Copy (`Ctrl + C`)
 - Range selection using Shift+Click, Shift+Arrows, Mouse Drag, or `Ctrl + A` (Select All).
 - Copies clean Tab-Separated Values (TSV) directly to clipboard with a confirmation floating toast.
 
-## 4. UI Architecture & Core Features
-
-### 4.1 Virtual Table Viewport (`VirtualTable`)
-- Renders only 30–50 rows in the active DOM viewport via bidirectional dynamic slicing.
-
 ### 4.2 RegEx Full-Text Search Bar
-- Supports PCRE-compatible regular expressions (e.g., `^\d{3}-\d{4}$`) with zero lag.
+- Supports PCRE-compatible regular expressions (e.g., `^\d{3}-\d{4}$`) with zero lag and syntax error protection.
 
 ### 4.3 High-Contrast Sticky Row Numbers & Row Selection
-- Leftmost row number column (`#`) remains frozen on horizontal scrolling.
+- Horizontal scrolling freezes the leftmost row index column (`#`) using `position: sticky; left: 0;`.
+- Clicking on a row number immediately selects the entire row with high-contrast accent highlights.
 
 ### 4.4 In-Place Context Menu (`TableContextMenu`)
 - **Row actions**: Insert row above/below, duplicate row, delete row.

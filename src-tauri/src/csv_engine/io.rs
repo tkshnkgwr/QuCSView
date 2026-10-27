@@ -52,6 +52,16 @@ impl CsvEngine {
         path: P,
         custom_delimiter: Option<char>,
     ) -> anyhow::Result<FileMetadata> {
+        self.open_file_with_encoding(path, custom_delimiter, None)
+    }
+
+    /// ファイルをオープンし、指定エンコーディング（省略時は自動判定）で行オフセットインデックスを構築
+    pub fn open_file_with_encoding<P: AsRef<Path>>(
+        &mut self,
+        path: P,
+        custom_delimiter: Option<char>,
+        forced_encoding: Option<SupportedEncoding>,
+    ) -> anyhow::Result<FileMetadata> {
         let start_time = std::time::Instant::now();
         let path_ref = path.as_ref();
         let file = File::open(path_ref)?;
@@ -59,6 +69,7 @@ impl CsvEngine {
 
         let mmap = unsafe { Mmap::map(&file)? };
         let (detected_encoding, detected_le) = Self::detect_format(&mmap[..mmap.len().min(8192)]);
+        let active_encoding = forced_encoding.unwrap_or(detected_encoding);
 
         let delimiter = match custom_delimiter {
             Some(c) => c as u8,
@@ -99,7 +110,7 @@ impl CsvEngine {
 
         self.file_path = Some(path_ref.to_path_buf());
         self.delimiter = delimiter;
-        self.encoding = detected_encoding.clone();
+        self.encoding = active_encoding.clone();
         self.line_ending = detected_le.clone();
         self.mmap = Some(Arc::new(mmap));
         self.in_memory_rows = None;
@@ -156,7 +167,7 @@ impl CsvEngine {
             total_rows,
             total_cols,
             headers,
-            encoding: detected_encoding,
+            encoding: active_encoding,
             line_ending: detected_le,
             delimiter: delimiter as char,
             is_dirty: false,
@@ -200,6 +211,15 @@ impl CsvEngine {
         Ok(decoded)
     }
 
+    /// セル値をCSV/TSV規格に従ってエスケープ
+    fn escape_csv_cell(s: &str, delim_char: char) -> String {
+        if s.contains(delim_char) || s.contains('"') || s.contains('\n') || s.contains('\r') {
+            format!("\"{}\"", s.replace('"', "\"\""))
+        } else {
+            s.to_string()
+        }
+    }
+
     /// 生テキスト取得
     pub fn get_raw_text(&self, max_lines: Option<usize>) -> String {
         let delim_char = self.delimiter as char;
@@ -223,32 +243,38 @@ impl CsvEngine {
                 }
             } else if !self.raw_headers.is_empty() {
                 // in-memory: raw_headers（空文字列保持）を使う
-                let escape_cell = |s: &str| -> String {
-                    if s.contains(delim_char) || s.contains('"') || s.contains('\n') {
-                        format!("\"{}\"", s.replace('"', "\"\""))
-                    } else {
-                        s.to_string()
-                    }
-                };
                 output.push_str(
                     &self
                         .raw_headers
                         .iter()
-                        .map(|h| escape_cell(h))
+                        .map(|h| Self::escape_csv_cell(h, delim_char))
                         .collect::<Vec<_>>()
                         .join(&delim_char.to_string()),
                 );
                 output.push_str(le);
             } else if !self.headers.is_empty() {
                 // フォールバック: 表示用ヘッダー（Col N を含む可能性あり）
-                output.push_str(&self.headers.join(&delim_char.to_string()));
+                output.push_str(
+                    &self
+                        .headers
+                        .iter()
+                        .map(|h| Self::escape_csv_cell(h, delim_char))
+                        .collect::<Vec<_>>()
+                        .join(&delim_char.to_string()),
+                );
                 output.push_str(le);
             }
         }
 
         for row_idx in 0..limit {
             if let Ok(row_data) = self.get_row_data(row_idx) {
-                output.push_str(&row_data.join(&delim_char.to_string()));
+                output.push_str(
+                    &row_data
+                        .iter()
+                        .map(|c| Self::escape_csv_cell(c, delim_char))
+                        .collect::<Vec<_>>()
+                        .join(&delim_char.to_string()),
+                );
                 output.push_str(le);
             }
         }
@@ -340,14 +366,25 @@ impl CsvEngine {
             let file_path = out_dir.join(&file_name);
             let mut file = File::create(&file_path)?;
 
-            if include_header && !self.headers.is_empty() {
-                let header_line = self.headers.join(&delim_char.to_string()) + le;
+            if include_header && self.has_header && !self.headers.is_empty() {
+                let header_line = self
+                    .headers
+                    .iter()
+                    .map(|h| Self::escape_csv_cell(h, delim_char))
+                    .collect::<Vec<_>>()
+                    .join(&delim_char.to_string())
+                    + le;
                 file.write_all(header_line.as_bytes())?;
             }
 
             for row_idx in start..end {
                 let row_data = self.get_row_data(row_idx)?;
-                let row_line = row_data.join(&delim_char.to_string()) + le;
+                let row_line = row_data
+                    .iter()
+                    .map(|c| Self::escape_csv_cell(c, delim_char))
+                    .collect::<Vec<_>>()
+                    .join(&delim_char.to_string())
+                    + le;
                 file.write_all(row_line.as_bytes())?;
             }
 
@@ -485,7 +522,7 @@ impl CsvEngine {
         }
 
         // 保存したファイルでエンジンを再初期化（mmap再構築 & 編集マーククリア）
-        self.open_file(path_ref, Some(out_delim as char))?;
+        self.open_file_with_encoding(path_ref, Some(out_delim as char), Some(encoding))?;
         self.modified_cells.clear();
 
         Ok(())

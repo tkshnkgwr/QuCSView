@@ -6,7 +6,7 @@
 
 ## 1. Welcome
 
-Thank you for contributing to QuCSVPreview. This project focuses on high performance on resource-constrained hardware and 100% preservation of literal CSV data against Excel-style type corruption.
+Thank you for contributing to QuCSView. This project focuses on high performance on resource-constrained hardware and 100% preservation of literal CSV data against Excel-style type corruption.
 
 ---
 

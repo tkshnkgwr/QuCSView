@@ -48,10 +48,12 @@
 3. **Find & Replace (`Ctrl + H`)**: Open the replacement dialog to execute single or batch regex replacements with capture groups (`$1`).
 4. Click the **Filter** button in the search bar to isolate matching rows while maintaining the **original physical file row numbers**.
 
-### 3.5 Encoding & Line-Ending Conversion and Saving
-- Select the desired encoding (`UTF-8`, `Shift_JIS`, `EUC-JP`) and line ending (`CRLF`, `LF`) from the toolbar dropdowns.
-- Press **`Ctrl + S`** to safely overwrite the original file in place (atomic replacement without file-lock errors).
-- Press **`Ctrl + Shift + S`** (or Save As) to choose an encoding, line ending, and use the "Browse..." button to select any destination folder and filename via native Windows dialogs.
+### 3.5 Table Preview ⇔ Raw Text View Toggle & High-Speed File Splitting
+- **View Mode Toggle**: Click the **Table / Text** toggle buttons in the toolbar to switch seamlessly between the virtualized spreadsheet grid and the raw text editor.
+- **High-Speed File Splitting**: Click the **Split** button in the toolbar to split massive CSV/TSV files into smaller chunks by specifying row count (e.g. 1,000 or 10,000 rows per file) while preserving the header row.
+
+### 3.6 Encoding & Line-Ending Conversion and Saving
+- Click **Save** in the toolbar (or press **`Ctrl + S`**) to open the Save Configuration dialog, where you can verify or convert the character encoding (`UTF-8`, `UTF-8 BOM`, `Shift_JIS`, `EUC-JP`), line ending (`CRLF`, `LF`), and delimiter, or use the "Browse..." button to select any destination folder and filename via native Windows dialogs.
 
 ---
 
@@ -69,6 +71,6 @@
 ## 5. Frequently Asked Questions (FAQ)
 
 - **Q: Does it support spreadsheet formula calculations like Excel SUM?**
-  - **A:** No. QuCSVPreview is strictly optimized as a fast, type-safe literal string previewer and editor.
+  - **A:** No. QuCSView is strictly optimized as a fast, type-safe literal string previewer and editor.
 - **Q: Does opening a 500MB CSV exhaust PC memory?**
   - **A:** No. Thanks to Rust memory-mapping (`memmap2`), RAM consumption remains under 40MB even on low-end machines.

@@ -394,3 +394,46 @@ fn test_save_to_same_file_while_mmap_open() {
     let disk_content = std::fs::read_to_string(&path).unwrap();
     assert_eq!(disk_content, "ID,Name\r\n1,Charlie\r\n2,Bob\r\n");
 }
+
+#[test]
+fn test_sort_config_in_get_rows_slice_and_range_tsv() {
+    let csv_data = "Name,Price\r\nBanana,200\r\nApple,1000\r\nCherry,50\r\n";
+    let temp_file = create_test_csv(csv_data);
+    let mut engine = CsvEngine::new();
+    engine.open_file(temp_file.path(), None).unwrap();
+
+    // 価格 (列1) で数値昇順ソート: 50 (Cherry, row 2) -> 200 (Banana, row 0) -> 1000 (Apple, row 1)
+    let sort_asc = SortConfig {
+        column: 1,
+        direction: "asc".to_string(),
+    };
+    let slice_asc = engine.get_rows_slice(0, 10, None, Some(&sort_asc)).unwrap();
+    assert_eq!(slice_asc.original_row_indices, vec![2, 0, 1]);
+    assert_eq!(slice_asc.rows[0][0], "Cherry");
+    assert_eq!(slice_asc.rows[1][0], "Banana");
+    assert_eq!(slice_asc.rows[2][0], "Apple");
+
+    // ソート状態での TSV 範囲抽出
+    let (tsv, rows, cols) = engine
+        .get_range_tsv(0, 1, 0, 1, None, Some(&sort_asc))
+        .unwrap();
+    assert_eq!(rows, 2);
+    assert_eq!(cols, 2);
+    assert_eq!(tsv, "Cherry\t50\nBanana\t200");
+}
+
+#[test]
+fn test_set_encoding_respects_forced_encoding() {
+    let csv_data = "ID,Name\r\n1,Test\r\n";
+    let temp_file = create_test_csv(csv_data);
+    let mut engine = CsvEngine::new();
+    let meta = engine.open_file(temp_file.path(), None).unwrap();
+    assert_eq!(meta.encoding, SupportedEncoding::Utf8);
+
+    // 手動で Shift_JIS に切り替えた場合、detect_format に上書きされず Shift_JIS が維持されること
+    let updated = engine
+        .set_encoding(SupportedEncoding::ShiftJis, None)
+        .unwrap();
+    assert_eq!(updated.encoding, SupportedEncoding::ShiftJis);
+    assert_eq!(engine.encoding, SupportedEncoding::ShiftJis);
+}

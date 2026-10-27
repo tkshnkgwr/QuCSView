@@ -1,7 +1,7 @@
 import { SupportedEncoding } from '../types/csv';
 import { WorkerState } from './worker/workerTypes';
 import { detectEncoding, decodeBytes } from './worker/workerEncoding';
-import { parseTextLines, parseLine } from './worker/workerParser';
+import { parseTextLines, parseLine, escapeCell } from './worker/workerParser';
 import { searchWorker, replaceCellWorker, replaceAllWorker } from './worker/workerSearch';
 import {
   getSliceWorker,
@@ -69,6 +69,7 @@ self.onmessage = (e: MessageEvent) => {
             delimiter: state.delimiter,
             lineEnding: state.lineEnding,
             loadTimeMs,
+            rawText: text,
           },
         });
         break;
@@ -136,6 +137,7 @@ self.onmessage = (e: MessageEvent) => {
             delimiter: state.delimiter,
             lineEnding: state.lineEnding,
             loadTimeMs,
+            rawText: text,
           },
         });
         break;
@@ -209,7 +211,7 @@ self.onmessage = (e: MessageEvent) => {
             state.rawHeaders.length > 0
               ? state.rawHeaders
               : state.headers.map((h) => (h.startsWith('Col ') ? '' : h));
-          output += headerFields.join(d) + le;
+          output += headerFields.map((h) => escapeCell(h, d)).join(d) + le;
         }
 
         for (let r = 0; r < state.lines.length; r++) {
@@ -223,10 +225,10 @@ self.onmessage = (e: MessageEvent) => {
               cells[c] = state.modifiedCells.get(key)!;
             }
           }
-          output += cells.join(d) + le;
+          output += cells.map((cell) => escapeCell(cell, d)).join(d) + le;
         }
 
-        self.postMessage({ id, success: true, data: output });
+        self.postMessage({ id, success: true, data: { text: output } });
         break;
       }
 

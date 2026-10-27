@@ -19,13 +19,14 @@
 
 バージョン更新時は、以下の Single Source of Truth に基づき更新を行います。
 
-| 項目                         | ファイル / 場所                           |
-| :--------------------------- | :---------------------------------------- |
-| フロントエンド標準バージョン | [`package.json`](../../package.json)      |
-| Rust クレートバージョン      | [`src-tauri/Cargo.toml`](../../src-tauri/Cargo.toml) |
-| Tauri アプリケーション定義    | [`src-tauri/tauri.conf.json`](../../src-tauri/tauri.conf.json) |
-| 日本語更新履歴               | [`docs/ja/CHANGELOG.md`](CHANGELOG.md)    |
-| 英語更新履歴                 | [`docs/en/CHANGELOG.md`](../en/CHANGELOG.md) |
+| 項目                         | ファイル / 場所                                                |
+| :--------------------------- | :------------------------------------------------------------- |
+| フロントエンド標準バージョン | [`package.json`](../../package.json)                           |
+| Rust クレートバージョン      | [`src-tauri/Cargo.toml`](../../src-tauri/Cargo.toml)           |
+| Tauri アプリケーション定義   | [`src-tauri/tauri.conf.json`](../../src-tauri/tauri.conf.json) |
+| アプリ内バージョン定数       | [`src/version.ts`](../../src/version.ts)                       |
+| 日本語更新履歴               | [`docs/ja/CHANGELOG.md`](CHANGELOG.md)                         |
+| 英語更新履歴                 | [`docs/en/CHANGELOG.md`](../en/CHANGELOG.md)                   |
 
 ---
 
@@ -67,9 +68,9 @@ npm run release major
 
 ### Git コミット・タグ作成とプッシュ (GitHub Releases 発動)
 ```bash
-git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json
-git commit -m "release: bump version to v0.1.1"
-git tag v0.1.1
+git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json src/version.ts
+git commit -m "release: v1.2.1 リリース"
+git tag v1.2.1
 git push origin main
-git push origin v0.1.1
+git push origin v1.2.1
 ```

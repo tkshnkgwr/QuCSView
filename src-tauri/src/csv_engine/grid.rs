@@ -133,13 +133,89 @@ impl CsvEngine {
         Ok(self.in_memory_rows.as_mut().unwrap())
     }
 
+    /// 数値または通貨・パーセント文字列をパース（ソート比較用のみ・元の文字列は変更しない）
+    fn parse_numeric(val: &str) -> Option<f64> {
+        let trimmed = val.trim();
+        if trimmed.is_empty() {
+            return None;
+        }
+        let clean = trimmed
+            .trim_start_matches(['¥', '$', '€', '£'])
+            .replace(',', "");
+        let clean = clean.strip_suffix('%').unwrap_or(&clean);
+        clean.parse::<f64>().ok().filter(|n| !n.is_nan())
+    }
+
+    /// セル値の数値・自然順比較（空文字は常に末尾）
+    fn compare_cell_values(a: &str, b: &str, is_asc: bool) -> std::cmp::Ordering {
+        use std::cmp::Ordering;
+        if a.is_empty() && b.is_empty() {
+            return Ordering::Equal;
+        }
+        if a.is_empty() {
+            return Ordering::Greater;
+        }
+        if b.is_empty() {
+            return Ordering::Less;
+        }
+
+        let cmp = match (Self::parse_numeric(a), Self::parse_numeric(b)) {
+            (Some(na), Some(nb)) => na.partial_cmp(&nb).unwrap_or(Ordering::Equal),
+            _ => a
+                .to_lowercase()
+                .cmp(&b.to_lowercase())
+                .then_with(|| a.cmp(b)),
+        };
+
+        if is_asc {
+            cmp
+        } else {
+            cmp.reverse()
+        }
+    }
+
+    /// フィルタおよびソート設定を適用した物理行インデックス配列を構築
+    fn get_sorted_row_indices(
+        &self,
+        filter_indices: Option<&[usize]>,
+        sort_config: Option<&SortConfig>,
+    ) -> Option<Vec<usize>> {
+        let sort_cfg = sort_config?;
+        if sort_cfg.column < 0 || (sort_cfg.column as usize) >= self.total_cols {
+            return None;
+        }
+        let is_asc = match sort_cfg.direction.as_str() {
+            "asc" => true,
+            "desc" => false,
+            _ => return None,
+        };
+        let col_idx = sort_cfg.column as usize;
+
+        let mut target_indices: Vec<usize> = match filter_indices {
+            Some(indices) => indices.to_vec(),
+            None => (0..self.total_rows).collect(),
+        };
+
+        let mut indexed_values: Vec<(usize, String)> = target_indices
+            .iter()
+            .map(|&row_idx| (row_idx, self.get_cell_value(row_idx, col_idx)))
+            .collect();
+
+        indexed_values.sort_by(|(idx_a, val_a), (idx_b, val_b)| {
+            Self::compare_cell_values(val_a, val_b, is_asc).then_with(|| idx_a.cmp(idx_b))
+        });
+
+        target_indices = indexed_values.into_iter().map(|(idx, _)| idx).collect();
+        Some(target_indices)
+    }
+
     /// 仮想スクロール用スライス取得 (30-50行)
     pub fn get_rows_slice(
         &mut self,
         start_row: usize,
         count: usize,
         filter_indices: Option<&[usize]>,
-        _sort_config: Option<&SortConfig>,
+        sort_config: Option<&SortConfig>,
     ) -> anyhow::Result<SliceResponse> {
         if self.total_rows == 0 {
             return Ok(SliceResponse {
@@ -147,6 +223,28 @@ impl CsvEngine {
                 rows: Vec::new(),
                 total_rows: 0,
                 original_row_indices: Vec::new(),
+            });
+        }
+
+        // ソート指定がある場合はソート済みインデックス列を生成してスライス返却
+        if let Some(sorted_indices) = self.get_sorted_row_indices(filter_indices, sort_config) {
+            let total = sorted_indices.len();
+            let actual_start = start_row.min(total);
+            let actual_end = (actual_start + count).min(total);
+            let mut rows = Vec::with_capacity(actual_end - actual_start);
+            let mut orig_indices = Vec::with_capacity(actual_end - actual_start);
+
+            for &orig_row_idx in &sorted_indices[actual_start..actual_end] {
+                let row_cells = self.get_row_data(orig_row_idx)?;
+                rows.push(row_cells);
+                orig_indices.push(orig_row_idx);
+            }
+
+            return Ok(SliceResponse {
+                start_row: actual_start,
+                rows,
+                total_rows: total,
+                original_row_indices: orig_indices,
             });
         }
 
@@ -543,9 +641,12 @@ impl CsvEngine {
         start_col: usize,
         end_col: usize,
         filter_indices: Option<&[usize]>,
-        _sort_config: Option<&SortConfig>,
+        sort_config: Option<&SortConfig>,
     ) -> anyhow::Result<(String, usize, usize)> {
-        let (row_indices, total_r) = if let Some(indices) = filter_indices {
+        let sorted_indices = self.get_sorted_row_indices(filter_indices, sort_config);
+        let effective_filter = sorted_indices.as_deref().or(filter_indices);
+
+        let (row_indices, total_r) = if let Some(indices) = effective_filter {
             let actual_start = start_row.min(indices.len());
             let actual_end = (end_row + 1).min(indices.len());
             let rows: Vec<usize> = if actual_start < actual_end {
@@ -606,14 +707,14 @@ impl CsvEngine {
         encoding: SupportedEncoding,
         custom_delimiter: Option<char>,
     ) -> anyhow::Result<FileMetadata> {
-        self.encoding = encoding;
+        self.encoding = encoding.clone();
         if let Some(c) = custom_delimiter {
             self.delimiter = c as u8;
         }
 
         // 1. 実ファイルパスが存在する場合、指定のエンコーディングで完全に開き直す
         if let Some(path) = self.file_path.clone() {
-            return self.open_file(&path, custom_delimiter);
+            return self.open_file_with_encoding(&path, custom_delimiter, Some(encoding));
         }
 
         // 2. インメモリ行（サンプルデータ・生テキスト等）の場合

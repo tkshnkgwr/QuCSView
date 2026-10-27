@@ -52,7 +52,7 @@ cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 
 ### APIドキュメントの生成
 ```bash
-# TypeDoc (TypeScript API) の生成 -> docs/api/
+# TypeDoc (TypeScript API) の生成 -> target/doc/ts/
 npm run doc
 
 # Rustdoc (Rust Backend API) の生成 -> src-tauri/target/doc/

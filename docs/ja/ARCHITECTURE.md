@@ -24,9 +24,9 @@ sequenceDiagram
     participant MMap as memmap2 (OS Page Cache)
 
     User->>React: CSVファイルをドラッグ＆ドロップ (500MB)
-    React->>IPC: invoke("open_file", { path })
+    React->>IPC: invoke("open_csv_file", { path })
     IPC->>Rust: open_file() 呼び出し
-    Rust->>MMap: File::open() -> MmapOptions::map()
+    Rust->>MMap: File::open() -> Mmap::map()
     MMap-->>Rust: mmap ポインタ (0ms コピーゼロ)
     Rust->>Rust: 改行オフセットテーブル生成 (Byte Scan)
     Rust-->>IPC: FileMetadata (行数, 列数, ヘッダー一覧)
@@ -44,13 +44,13 @@ sequenceDiagram
 
     User->>React: セル編集 (R:1002, C:3, "009988")
     React->>IPC: invoke("edit_cell", { row: 1002, col: 3, value: "009988" })
-    Rust->>Rust: diff_buffer.insert((1002, 3), "009988")
+    Rust->>Rust: modified_cells.insert((1002, 3), "009988")
     Rust-->>IPC: Success (isDirty: true)
 ```
 
 ---
 
-## 3. Rustメモリマップとインデックス構造 (`src-tauri/src/csv_engine.rs`)
+## 3. Rustメモリマップとインデックス構造 (`src-tauri/src/csv_engine/`)
 
 ### 3.1 `memmap2` によるゼロコピー
 - OSのページキャッシュを直接利用するため、500MBのファイルであってもアプリプロセスの物理メモリを消費しません。

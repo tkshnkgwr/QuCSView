@@ -25,9 +25,9 @@ sequenceDiagram
     participant MMap as memmap2 (OS Page Cache)
 
     User->>React: Drag & Drop CSV (500MB)
-    React->>IPC: invoke("open_file", { path })
+    React->>IPC: invoke("open_csv_file", { path })
     IPC->>Rust: open_file() execution
-    Rust->>MMap: File::open() -> MmapOptions::map()
+    Rust->>MMap: File::open() -> Mmap::map()
     MMap-->>Rust: Raw mmap Pointer (Zero-Copy)
     Rust->>Rust: Scan row byte-offset index table
     Rust-->>IPC: FileMetadata (rowCount, colCount, headers)
@@ -45,13 +45,13 @@ sequenceDiagram
 
     User->>React: Edit Cell (R:1002, C:3, "009988")
     React->>IPC: invoke("edit_cell", { row: 1002, col: 3, value: "009988" })
-    Rust->>Rust: diff_buffer.insert((1002, 3), "009988")
+    Rust->>Rust: modified_cells.insert((1002, 3), "009988")
     Rust-->>IPC: Success (isDirty: true)
 ```
 
 ---
 
-## 3. Rust Memory Mapping & Indexing Strategy
+## 3. Rust Memory Mapping & Indexing Strategy (`src-tauri/src/csv_engine/`)
 
 ### 3.1 Zero-Copy via `memmap2`
 - Files are mapped directly to virtual memory backed by the OS page cache.
