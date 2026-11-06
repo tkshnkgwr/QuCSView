@@ -16,6 +16,10 @@ Future development focuses on enhanced spreadsheet-like editing ergonomics (rect
 
 | Feature Category     | Feature / Proposal                                          | Priority        | Status               | Target Version |
 | :------------------- | :---------------------------------------------------------- | :-------------- | :------------------- | :------------- |
+| **Sorting**          | Native Column Sort (Asc/Desc/None, Natural & Numeric order) | 🔴 **High**     | ✅ **Completed**     | v1.2.2         |
+| **Saving & Robust**  | Windows Overwrite File Lock Resolution (Atomic Replace)     | 🔴 **High**     | ✅ **Completed**     | v1.2.2         |
+| **UI & Usability**   | Title Bar "Always-on-Top" Native Window Pinning             | 🟡 **Medium**   | ✅ **Completed**     | v1.2.2         |
+| **Licensing**        | Relicensed to GNU General Public License v3.0 or later      | 🔴 **High**     | ✅ **Completed**     | v1.2.3         |
 | **Rendering & Perf** | 2D Virtual Scrolling Engine (Horizontal Column Virtualize)  | 🔴 **High**     | ✅ **Completed**     | v1.1.2         |
 | **D&D Operations**   | Enhanced Drag & Drop with Floating Overlay & File Switch    | 🔴 **High**     | ✅ **Completed**     | v1.1.2         |
 | **Clipboard & Copy** | 0ms Local TSV Copying & Dual `execCommand` Fallback         | 🔴 **High**     | ✅ **Completed**     | v1.1.2         |
@@ -24,8 +28,11 @@ Future development focuses on enhanced spreadsheet-like editing ergonomics (rect
 | **UI & Layout**      | Double-click Header Boundary to Auto-Fit Width              | 🔴 **High**     | ✅ **Completed**     | v1.1.0         |
 | **Data Quality**     | Selection Quick Stats Preview (Sum, Avg, Count, Min, Max)   | 🟡 **Medium**   | ✅ **Completed**     | v1.1.0         |
 | **Usability**        | Recent Files History & Quick Reload                         | 🟢 **Low / Ext**| ✅ **Completed**     | v1.1.0         |
-| **Sorting**          | Multi-Column Composite Sorting via Shift+Click              | 🟡 **Medium**   | 📋 Proposed (TODO)   | v1.2.0         |
-| **Data Quality**     | Duplicate Rows / Values Detection & Color Highlighting      | 🟡 **Medium**   | 📋 Proposed (TODO)   | v1.2.0         |
+| **Sorting**          | Multi-Column Composite Sorting via Shift+Click              | 🟡 **Medium**   | 📋 Proposed (TODO)   | v1.3.0         |
+| **Data Quality**     | Duplicate Rows / Values Detection & Color Highlighting      | 🟡 **Medium**   | 📋 Proposed (TODO)   | v1.3.0         |
+| **Search & Replace** | Rust Native Batch Replace Accelerator (`batch_replace_cells`)| 🟡 **Medium**   | 📋 Proposed (TODO)   | v1.3.0         |
+| **File Operations**  | CSV Export Quotation Policy Setting (Auto / Always / None)  | 🟡 **Medium**   | 📋 Proposed (TODO)   | v1.3.0         |
+| **Navigation**       | Direct Row Jump Dialog (`Ctrl + G`)                         | 🟡 **Medium**   | 📋 Proposed (TODO)   | v1.3.0         |
 | **UI & Operations**  | Drag-and-Drop Column Header Reordering                      | 🟡 **Medium**   | 📋 Proposed (TODO)   | v1.3.0         |
 | **File Operations**  | High-Speed Multi-CSV Merging & Combined Export              | 🟡 **Medium**   | 📋 Proposed (TODO)   | v1.3.0         |
 | **Data Comparison**  | Cell-by-Cell Visual CSV Difference Comparison (CSV Diff)    | 🟡 **Medium**   | 📋 Proposed (TODO)   | v1.3.0         |
@@ -67,6 +74,22 @@ Future development focuses on enhanced spreadsheet-like editing ergonomics (rect
 
 #### 📋 2.5 Visual CSV Diff Viewer
 - **Overview**: Select two CSV files to compare cells, visually highlighting modified (yellow), inserted (green), and deleted (red) rows.
+
+#### 📋 2.6 Auto-Expanding Table on Clipboard Paste
+- **Overview**: When pasting 2D tabular clipboard data exceeding the existing table boundary (max rows/columns), automatically expand rows and columns so that no data is clipped or lost.
+- **Implementation**: Inspect boundaries in `handleBatchCellEdited` and auto-invoke native `insert_row` / `insert_col` IPC commands.
+
+#### 📋 2.7 Focus & Viewport Tracking on Cell Edit under Active Sort
+- **Overview**: When committing an in-place cell edit on a sorted column, dynamically re-center active cell focus and smooth-scroll to the row's new sorted position instead of losing view context.
+
+#### 📋 2.8 Rust Native Batch Replace Accelerator (`batch_replace_cells`)
+- **Overview**: Replace thousands of cells atomically in-memory via a newly introduced Rust IPC command (`batch_replace_cells`), reducing Find & Replace latency from seconds down to sub-milliseconds.
+
+#### 📋 2.9 CSV Export Quotation Policy Setting (Quotation Options)
+- **Overview**: Enhance Save / Export modal with options: RFC4180 Auto (only when necessary), Always Quote (wrap all fields in double quotes for banking/enterprise systems), and Never Quote.
+
+#### 📋 2.10 Direct Row Jump Dialog (`Ctrl + G`)
+- **Overview**: Quickly jump to any specific physical line index (e.g. Row #85,200) in massive 1,000,000+ row files via a lightweight keyboard shortcut dialog.
 
 ---
 
@@ -130,4 +153,14 @@ Future development focuses on enhanced spreadsheet-like editing ergonomics (rect
 - [x] Arrow key navigation with automatic container focus and horizontal scroll tracking.
 - [x] Natural mouse caret positioning, deselection, and text selection during in-place cell editing.
 - [x] Modular architecture refactoring of frontend (`App.tsx`, `VirtualTable.tsx`) and Web Worker (`csvWorker.ts`), bringing all source files under 1,000 lines.
+
+### Phase 8: Native Column Sorting, Robustness, and GPL-3.0 Relicensing (Completed ✅)
+- [x] Implemented Rust native natural & numeric column sorting (`sort_config` slice return while strictly preserving zero-type mutation).
+- [x] Maintained manual encoding settings on file re-decoding via `open_file_with_encoding`.
+- [x] RFC-compliant cell escaping in raw text export and file splitting, respecting headerless CSV configuration.
+- [x] Native IPC integration for Title Bar "Always-on-Top" pinning.
+- [x] Restored status bar badges and synchronized Web Worker responses.
+- [x] Relicensed the project under GNU General Public License v3.0 or later (GPL-3.0-or-later).
+- [x] Synchronized all documentation across Japanese and English with strict Markdown vertical table alignment.
+
 

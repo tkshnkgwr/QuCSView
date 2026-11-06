@@ -29,11 +29,13 @@
 - **Toolbar / Shortcut**: Click **Open** or press **`Ctrl + O`** to invoke the Windows native file open dialog with guaranteed full absolute path preservation.
 - **Recent Files**: Click the **History** menu in the Title Bar to reload any of the last 10 opened files with a single click.
 
-### 3.2 Navigation & 2D Virtual Scrolling
+### 3.2 Navigation, Sorting, and 2D Virtual Scrolling
 - **2D Virtual Scrolling**: Both vertical rows and horizontal columns are dynamically virtualized, delivering butter-smooth 60/120fps scrolling even on massive CSVs with 200+ columns.
 - **Keyboard Navigation**: Click any cell or load a file to begin navigating immediately with Arrow keys (`↑`, `↓`, `←`, `→`). Both vertical and horizontal viewport scrolling automatically follow cursor movement. Use `PageUp` and `PageDown` to jump full screens.
-- **Sticky Row Index**: The leftmost `#` row index column stays anchored on horizontal scrolling.
+- **Column Sorting (Ascending / Descending / None)**: **Click** any column header to toggle sorting: **Ascending (▲) → Descending (▼) → None (original order)**. Uses high-performance natural order and numeric comparisons while strictly preserving raw text representations without type mutation.
 - **Auto-Fit Column Width**: **Double-click** the right border of any column header to automatically resize the column to fit its longest text content.
+- **Sticky Row Index**: The leftmost `#` row index column stays anchored on horizontal scrolling.
+- **Always-on-Top Window Pinning**: Click the pin icon (📌) on the right side of the Title Bar to keep QuCSView floating above all other application windows for seamless side-by-side reference.
 
 ### 3.3 Direct In-Place Cell Editing & TSV Copy/Paste
 1. **Cell Editing**: Double-click any cell or press **`Enter` / `F2`**. Initial edit selects all text, while clicking between characters places the cursor precisely and allows standard mouse drag selection. Unsaved edited cells are marked with an orange corner triangle.

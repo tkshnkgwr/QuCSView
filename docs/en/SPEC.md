@@ -117,6 +117,25 @@ When opening tabular data in Microsoft Excel, multiple destructive auto-conversi
   - Users can drop files onto the window at any time to instantly switch open tables.
   - Seamlessly bridges native Tauri v2 drop events with standard HTML5 drag & drop.
 
+### 4.15 Native Column Sorting (Natural & Numeric Sort)
+- **3-Way Toggle via Header Click**:
+  - Clicking any column header toggles **Ascending (▲) → Descending (▼) → None (Unsorted)**.
+  - Sort direction icons (`ArrowUp`, `ArrowDown`, and hover `ArrowUpDown`) indicate the active state.
+- **Strict Zero-Type-Mutation Natural & Numeric Ordering**:
+  - Does not cast cell data into numeric types, ensuring original text literal formatting is never mutated. Natural order and currency/comma/percent-aware numeric comparisons are applied purely on literal representations.
+- **Rust Native Engine Integration**:
+  - `SortConfig` is passed directly down to Rust IPC (`get_rows_slice` and `get_range_tsv`), returning sorted slices from massive 500MB files in sub-milliseconds.
+
+### 4.16 Title Bar "Always-on-Top" Pin
+- **Window Pinning**:
+  - A pin icon toggle button (`Pin` / `PinOff`) on the custom title bar pins the QuCSView window above all other desktop applications.
+  - Interacts directly with Tauri's native window API (`set_always_on_top`) for convenient cross-referencing with Excel or web browsers.
+
+### 4.17 Native File Dialogs (Browse Button)
+- **System Explorer Dialogs**:
+  - Standard file open (`Ctrl + O`) triggers Tauri's native `select_file_dialog`.
+  - The Save As modal (`Ctrl + Shift + S`) includes a "Browse..." button allowing users to pick an export destination directory and filename using the native Windows explorer dialog.
+
 ---
 
 ## 5. Keyboard Shortcuts
@@ -132,6 +151,7 @@ When opening tabular data in Microsoft Excel, multiple destructive auto-conversi
 | **`Ctrl + C`**                      | Table               | Copy selected cell range / row as TSV             |
 | **`Ctrl + V`**                      | Table               | Paste 2D clipboard TSV/CSV data (Undo-supported)  |
 | **`Double-Click Header Border`**    | Header Boundary     | Auto-fit column width to content (Auto-Fit)       |
+| **`Click Column Header`**           | Header              | Toggle column sorting (Ascending ▲ / Descending ▼)|
 | **`Ctrl + A`**                      | Table               | Select all cells in the table                     |
 | **`Shift + Arrow / Click`**         | Table               | Expand cell range selection                       |
 | **`Ctrl + F`**                      | Global              | Focus full-text search input                      |
