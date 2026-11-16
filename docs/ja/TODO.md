@@ -162,7 +162,29 @@ QuCSView は **v1.0.0 (正式版)** のリリースにより、500MB超の大規
 - [x] 生テキスト出力およびファイル分割時のRFC準拠セルエスケープ＆ヘッダーなし設定反映
 - [x] タイトルバー「最前面固定 (Always-on-Top)」のネイティブIPC連動
 - [x] ステータスバー未保存編集バッジ・絞り込み行数バッジの復旧および Worker 同期修正
-- [x] オープンソースライセンスを GNU General Public License v3.0 or later (GPL-3.0-or-later) へ移行
+- [ ] オープンソースライセンスを GNU General Public License v3.0 or later (GPL-3.0-or-later) へ移行
 - [x] ドキュメント全体（README, SPEC, USER_GUIDE, ARCHITECTURE, TODO）の全面同期と Markdown テーブル垂直整列の完全適合
+
+---
+
+## 5. Ver.2.0 軽量化・コード監査による改善課題 (Code Audit Backlog)
+
+2026-11-16 の全ソースコード監査で検出された「Rust/Worker 全量二重ロード・再レンダリング波及・不要タイマー・過剰依存・デッドコード」の解消タスク。
+
+### ⚡ メモリ・二重処理・描画パフォーマンス改善
+- [ ] **Rust と Web Worker のファイル全量二重ロード解消 (`src/services/tauriBridge.ts`, `src/hooks/useFileOperations.ts`)**:
+  Tauri 環境で Rust 側 mmap オープン直後に `file.arrayBuffer()` や `invoke('get_raw_text', { maxLines: null })` で Web Worker にも全量ロードしている二重処理を廃止し、Tauri 実行時は Rust 側へ一本化する。あわせて表表示中の常時 `rawText` 全文生成・保持を止め、テキストモード切替時のみの取得へ改める。
+- [ ] **`RawTextView` の仮想化・デバウンスと `StatusBar` 無用ティック廃止 (`RawTextView.tsx`, `StatusBar.tsx`)**:
+  `RawTextView` の非仮想化全行 DOM 生成および 1打鍵ごとの全行 IPC 再パースに仮想スクロールとデバウンスを導入する。また `StatusBar` の `"FPS: 60 | 1s Tick"` 用 1秒ごと `setInterval` と常時 `animate-ping` / `animate-pulse` を廃止し、`App.tsx` の `animate-bounce` や無効な `animate-in` クラス、全セル `transition-colors` も整理する。
+- [ ] **テーブル再レンダリング波及とアイドル無条件フェッチの解消 (`App.tsx`, `VirtualTable.tsx`, `TableRow.tsx`)**:
+  `App.tsx` のステート集中と `VirtualTable` の関数参照再生成（`isCellInRange` / `isRowSelected`）・`editValue` 全行伝播・`scrollTop`/`scrollLeft` 同期 `setState`・`hasHeader` 含む `key` による `React.memo` 形骸化を修正する。また正規表現ハイライト時のセル毎 `new RegExp` ×3 生成をメモ化する。
+- [ ] **Rust / Worker エンジン計算・I/O 効率の最適化 (`grid.rs`, `search.rs`, `io.rs`)**:
+  チャンク毎の再ソートをキャッシュ化し、`replace_all` をセル単位ではなく行単位デコード処理へ、`save_to_file` を `BufWriter` 経由かつ高速再構築へ改善する。
+
+### 🧹 過剰依存・バグ・デッドコード整理
+- [ ] **完全未使用パッケージ・クレート・無効 CSS の削減 (`package.json`, `Cargo.toml`, `index.html`)**:
+  未使用の `motion`・`autoprefixer`・重複 `tailwindcss`・ブラウザ用 `encoding-japanese`、および Rust 側の完全未使用クレート `tauri-plugin-opener`・`encoding_rs_io`・`rayon` を削除・整理し、`index.html` の不要な OGP メタタグと `vite.config.ts`/`tsconfig.json` のエイリアス不整合を修正する。
+- [ ] **ID重複バグ・PowerShell ダイアログ・デッドコードの整理 (`Toolbar.tsx`, `App.tsx`, `main.rs`, `tauriBridge.ts`)**:
+  `Toolbar.tsx` と `App.tsx` での `id="btn-open-file"` 重複バグを修正する。また `main.rs` の毎回 `powershell` サブプロセス起動によるダイアログ処理を `tauri-plugin-dialog` 等へ置換し、未呼び出し `split_csv` / `start_dragging`、フロント・Rust 間の `SearchResponse` フィールド不整合、`sampleData.ts`・`csvParser.ts`（本体未使用）・到達不能ハンドラを整理する。
 
 

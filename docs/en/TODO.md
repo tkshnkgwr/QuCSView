@@ -163,4 +163,26 @@ Future development focuses on enhanced spreadsheet-like editing ergonomics (rect
 - [x] Relicensed the project under GNU General Public License v3.0 or later (GPL-3.0-or-later).
 - [x] Synchronized all documentation across Japanese and English with strict Markdown vertical table alignment.
 
+---
+
+## 5. Ver.2.0 Lightweight Optimization & Code Audit Backlog
+
+Technical debt and performance optimization tasks identified in the full source code audit on 2026-11-16 to eliminate Rust/Worker duplicate loading, re-render cascades, unnecessary timers, unused dependencies, and dead code.
+
+### ⚡ Memory, Dual-Processing & Rendering Performance
+- [ ] **Eliminate Rust + Web Worker Duplicate Full-File Loading (`src/services/tauriBridge.ts`, `src/hooks/useFileOperations.ts`)**:
+  Stop loading the entire file into Web Worker (`arrayBuffer` / `get_raw_text`) right after Rust `open_csv_file` mmap initialization under Tauri; route Tauri operations exclusively through Rust, and stop eagerly generating/holding `rawText` while in Table mode until switching to Raw Text mode.
+- [ ] **Virtualize/Debounce `RawTextView` & Remove Idle `StatusBar` Tick (`RawTextView.tsx`, `StatusBar.tsx`)**:
+  Virtualize line rendering and debounce full-text IPC updates in `RawTextView`; remove the 1-second `setInterval` (`1s Tick`) and continuous `animate-ping`/`animate-pulse` in `StatusBar`, `animate-bounce` in `App.tsx`, dead `animate-in` classes, and per-cell `transition-colors`.
+- [ ] **Fix VirtualTable Re-render Cascades & RegExp Allocation (`App.tsx`, `VirtualTable.tsx`, `TableRow.tsx`)**:
+  Decouple state centralized in `App.tsx`, stabilize `isCellInRange`/`isRowSelected` callbacks, avoid passing `editValue` to all rows, optimize scroll state updates and `hasHeader` key remounting so `React.memo` works properly, and cache `new RegExp` creation per search instead of 3x per cell.
+- [ ] **Optimize Rust / Worker Engine Sorting, Replace & Saving (`grid.rs`, `search.rs`, `io.rs`)**:
+  Cache sorted row indices across chunk reads, batch `replace_all` decoding per row instead of per cell, and wrap `save_to_file` writes in `BufWriter`.
+
+### 🧹 Unused Dependencies, Bugs & Dead Code Cleanup
+- [ ] **Trim Unused Packages, Crates & Meta Tags (`package.json`, `Cargo.toml`, `index.html`)**:
+  Remove unused `motion`, `autoprefixer`, duplicate `tailwindcss`, redundant `encoding-japanese`, and completely unused Rust crates (`tauri-plugin-opener`, `encoding_rs_io`, `rayon`); clean up unnecessary OGP tags in `index.html` and fix `@` alias mismatch between `vite.config.ts` and `tsconfig.json`.
+- [ ] **Fix Duplicate DOM ID, PowerShell Dialogs & Dead Code (`Toolbar.tsx`, `App.tsx`, `main.rs`, `tauriBridge.ts`)**:
+  Fix duplicate `id="btn-open-file"` across `Toolbar.tsx` and `App.tsx`; replace `powershell` subprocess spawning for file dialogs with native Tauri dialogs (`tauri-plugin-dialog`); resolve `SearchResponse` mismatch and clean up unused `split_csv`/`start_dragging` commands, `sampleData.ts`, unreachable delimiter/line-ending handlers, and duplicate CSV escaping logic.
+
 
