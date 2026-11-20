@@ -139,7 +139,7 @@ export function useFileOperations({
         return;
       }
     }
-    document.getElementById('btn-open-file')?.click();
+    document.getElementById('input-open-file-hidden')?.click();
   }, [handleOpenFilePath]);
 
   // 最近開いたファイルの再読込

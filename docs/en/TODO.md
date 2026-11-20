@@ -180,9 +180,9 @@ Technical debt and performance optimization tasks identified in the full source 
   Cache sorted row indices across chunk reads, batch `replace_all` decoding per row instead of per cell, and wrap `save_to_file` writes in `BufWriter`.
 
 ### 🧹 Unused Dependencies, Bugs & Dead Code Cleanup
-- [ ] **Trim Unused Packages, Crates & Meta Tags (`package.json`, `Cargo.toml`, `index.html`)**:
-  Remove unused `motion`, `autoprefixer`, duplicate `tailwindcss`, redundant `encoding-japanese`, and completely unused Rust crates (`tauri-plugin-opener`, `encoding_rs_io`, `rayon`); clean up unnecessary OGP tags in `index.html` and fix `@` alias mismatch between `vite.config.ts` and `tsconfig.json`.
-- [ ] **Fix Duplicate DOM ID, PowerShell Dialogs & Dead Code (`Toolbar.tsx`, `App.tsx`, `main.rs`, `tauriBridge.ts`)**:
-  Fix duplicate `id="btn-open-file"` across `Toolbar.tsx` and `App.tsx`; replace `powershell` subprocess spawning for file dialogs with native Tauri dialogs (`tauri-plugin-dialog`); resolve `SearchResponse` mismatch and clean up unused `split_csv`/`start_dragging` commands, `sampleData.ts`, unreachable delimiter/line-ending handlers, and duplicate CSV escaping logic.
+- [x] **Trim Unused Packages, Crates, Meta Tags & Alias Mismatch (`package.json`, `Cargo.toml`, `index.html`, `vite.config.ts`)**:
+  Removed unused `motion` and `autoprefixer` along with completely unused Rust crates (`tauri-plugin-opener`, `encoding_rs_io`, `rayon`); cleaned up unnecessary OGP meta tags in `index.html` and aligned `@` alias in `vite.config.ts` with `tsconfig.json` (`encoding-japanese` retained as actively used by Web Worker fallback).
+- [ ] **Replace PowerShell Dialogs & Clean Up Dead Code (`main.rs`, `tauriBridge.ts`)**:
+  Fixed duplicate `id="btn-open-file"` across `Toolbar.tsx` and `App.tsx` and mitigated PowerShell injection in `select_save_file_dialog`. Remaining: replace `powershell` subprocess file dialogs with native Tauri dialogs (`tauri-plugin-dialog`); resolve `SearchResponse` mismatch and clean up unused `split_csv`/`start_dragging` commands, `sampleData.ts`, and unreachable handlers.
 
 

@@ -278,6 +278,7 @@ export default function App() {
     window.addEventListener('keydown', handleGlobalKeyDown);
 
     let unlistenTauriDrop: (() => void) | null = null;
+    let disposed = false;
     if (isTauriEnv()) {
       import('@tauri-apps/api/webview')
         .then(({ getCurrentWebview }) => {
@@ -296,7 +297,11 @@ export default function App() {
           });
         })
         .then((unlisten) => {
-          unlistenTauriDrop = unlisten;
+          if (disposed) {
+            unlisten();
+          } else {
+            unlistenTauriDrop = unlisten;
+          }
         })
         .catch((err) => {
           console.warn('Failed to listen to Tauri dragDropEvent:', err);
@@ -304,6 +309,7 @@ export default function App() {
     }
 
     return () => {
+      disposed = true;
       window.removeEventListener('dragenter', handleDragEnter);
       window.removeEventListener('dragover', handleDragOver);
       window.removeEventListener('dragleave', handleDragLeave);
@@ -520,7 +526,7 @@ export default function App() {
 
       {/* 隠し input[type="file"] */}
       <input
-        id="btn-open-file"
+        id="input-open-file-hidden"
         type="file"
         accept=".csv,.tsv,.txt,.dat,text/csv,text/tab-separated-values,text/plain"
         className="hidden"

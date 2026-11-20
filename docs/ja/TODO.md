@@ -162,7 +162,7 @@ QuCSView は **v1.0.0 (正式版)** のリリースにより、500MB超の大規
 - [x] 生テキスト出力およびファイル分割時のRFC準拠セルエスケープ＆ヘッダーなし設定反映
 - [x] タイトルバー「最前面固定 (Always-on-Top)」のネイティブIPC連動
 - [x] ステータスバー未保存編集バッジ・絞り込み行数バッジの復旧および Worker 同期修正
-- [ ] オープンソースライセンスを GNU General Public License v3.0 or later (GPL-3.0-or-later) へ移行
+- [x] オープンソースライセンスを GNU General Public License v3.0 or later (GPL-3.0-or-later) へ移行
 - [x] ドキュメント全体（README, SPEC, USER_GUIDE, ARCHITECTURE, TODO）の全面同期と Markdown テーブル垂直整列の完全適合
 
 ---
@@ -182,9 +182,9 @@ QuCSView は **v1.0.0 (正式版)** のリリースにより、500MB超の大規
   チャンク毎の再ソートをキャッシュ化し、`replace_all` をセル単位ではなく行単位デコード処理へ、`save_to_file` を `BufWriter` 経由かつ高速再構築へ改善する。
 
 ### 🧹 過剰依存・バグ・デッドコード整理
-- [ ] **完全未使用パッケージ・クレート・無効 CSS の削減 (`package.json`, `Cargo.toml`, `index.html`)**:
-  未使用の `motion`・`autoprefixer`・重複 `tailwindcss`・ブラウザ用 `encoding-japanese`、および Rust 側の完全未使用クレート `tauri-plugin-opener`・`encoding_rs_io`・`rayon` を削除・整理し、`index.html` の不要な OGP メタタグと `vite.config.ts`/`tsconfig.json` のエイリアス不整合を修正する。
-- [ ] **ID重複バグ・PowerShell ダイアログ・デッドコードの整理 (`Toolbar.tsx`, `App.tsx`, `main.rs`, `tauriBridge.ts`)**:
-  `Toolbar.tsx` と `App.tsx` での `id="btn-open-file"` 重複バグを修正する。また `main.rs` の毎回 `powershell` サブプロセス起動によるダイアログ処理を `tauri-plugin-dialog` 等へ置換し、未呼び出し `split_csv` / `start_dragging`、フロント・Rust 間の `SearchResponse` フィールド不整合、`sampleData.ts`・`csvParser.ts`（本体未使用）・到達不能ハンドラを整理する。
+- [x] **完全未使用パッケージ・クレート・無効メタタグ・エイリアス不整合の削減 (`package.json`, `Cargo.toml`, `index.html`, `vite.config.ts`)**:
+  未使用の `motion`・`autoprefixer`、および Rust 側の完全未使用クレート `tauri-plugin-opener`・`encoding_rs_io`・`rayon` を削除し、`index.html` の不要な OGP メタタグと `vite.config.ts`/`tsconfig.json` の `@` エイリアス不整合を修正完了（※WebWorker フォールバック用 `encoding-japanese` は実使用中のため維持）。
+- [ ] **PowerShell ダイアログ置換・デッドコードの整理 (`main.rs`, `tauriBridge.ts`)**:
+  `Toolbar.tsx` と `App.tsx` の `id="btn-open-file"` 重複バグおよび `select_save_file_dialog` の PowerShell インジェクションリスクは修正済み。残件として `powershell` サブプロセス起動を `tauri-plugin-dialog` 等へ置換し、未呼び出し `split_csv` / `start_dragging`、フロント・Rust 間の `SearchResponse` フィールド不整合、`sampleData.ts`・`csvParser.ts`（本体未使用）を整理する。
 
 

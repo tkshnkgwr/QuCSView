@@ -127,10 +127,12 @@ impl CsvEngine {
                 }
                 all_rows.push(row_cells);
             }
-            self.in_memory_rows = Some(all_rows);
             self.modified_cells.clear();
+            return Ok(self.in_memory_rows.insert(all_rows));
         }
-        Ok(self.in_memory_rows.as_mut().unwrap())
+        self.in_memory_rows
+            .as_mut()
+            .ok_or_else(|| anyhow::anyhow!("In-memory rows buffer is unexpectedly empty"))
     }
 
     /// 数値または通貨・パーセント文字列をパース（ソート比較用のみ・元の文字列は変更しない）
@@ -143,7 +145,7 @@ impl CsvEngine {
             .trim_start_matches(['¥', '$', '€', '£'])
             .replace(',', "");
         let clean = clean.strip_suffix('%').unwrap_or(&clean);
-        clean.parse::<f64>().ok().filter(|n| !n.is_nan())
+        clean.parse::<f64>().ok().filter(|n| n.is_finite())
     }
 
     /// セル値の数値・自然順比較（空文字は常に末尾）
@@ -160,7 +162,7 @@ impl CsvEngine {
         }
 
         let cmp = match (Self::parse_numeric(a), Self::parse_numeric(b)) {
-            (Some(na), Some(nb)) => na.partial_cmp(&nb).unwrap_or(Ordering::Equal),
+            (Some(na), Some(nb)) => na.total_cmp(&nb),
             _ => a
                 .to_lowercase()
                 .cmp(&b.to_lowercase())
@@ -230,7 +232,7 @@ impl CsvEngine {
         if let Some(sorted_indices) = self.get_sorted_row_indices(filter_indices, sort_config) {
             let total = sorted_indices.len();
             let actual_start = start_row.min(total);
-            let actual_end = (actual_start + count).min(total);
+            let actual_end = actual_start.saturating_add(count).min(total);
             let mut rows = Vec::with_capacity(actual_end - actual_start);
             let mut orig_indices = Vec::with_capacity(actual_end - actual_start);
 
@@ -252,7 +254,7 @@ impl CsvEngine {
         if let Some(indices) = filter_indices {
             let total = indices.len();
             let actual_start = start_row.min(total);
-            let actual_end = (actual_start + count).min(total);
+            let actual_end = actual_start.saturating_add(count).min(total);
             let mut rows = Vec::with_capacity(actual_end - actual_start);
             let mut orig_indices = Vec::with_capacity(actual_end - actual_start);
 
@@ -272,7 +274,7 @@ impl CsvEngine {
 
         // 通常表示
         let actual_start = start_row.min(self.total_rows);
-        let actual_end = (actual_start + count).min(self.total_rows);
+        let actual_end = actual_start.saturating_add(count).min(self.total_rows);
         let slice_len = actual_end - actual_start;
         let mut rows = Vec::with_capacity(slice_len);
         let mut orig_indices = Vec::with_capacity(slice_len);
@@ -510,7 +512,9 @@ impl CsvEngine {
     ) -> anyhow::Result<(usize, Vec<String>, usize)> {
         let source_data = self.get_row_data(source_row)?;
         let mem_rows = self.ensure_in_memory_rows()?;
-        let insert_idx = target_row.unwrap_or(source_row + 1).min(mem_rows.len());
+        let insert_idx = target_row
+            .unwrap_or(source_row.saturating_add(1))
+            .min(mem_rows.len());
         mem_rows.insert(insert_idx, source_data.clone());
         self.total_rows = mem_rows.len();
         Ok((insert_idx, source_data, self.total_rows))
@@ -528,7 +532,11 @@ impl CsvEngine {
         for row in mem_rows.iter_mut() {
             row.insert(target_col, String::new());
         }
-        self.headers.insert(target_col, header);
+        self.headers.insert(target_col, header.clone());
+        if !self.raw_headers.is_empty() {
+            let raw_idx = target_col.min(self.raw_headers.len());
+            self.raw_headers.insert(raw_idx, header);
+        }
         self.total_cols += 1;
 
         Ok(self.get_metadata())
@@ -542,6 +550,9 @@ impl CsvEngine {
         if self.total_cols <= 1 {
             anyhow::bail!("Cannot delete the only column");
         }
+        if col_idx >= self.total_cols {
+            anyhow::bail!("Column index out of bounds");
+        }
         let mem_rows = self.ensure_in_memory_rows()?;
         let mut deleted_values = Vec::with_capacity(mem_rows.len());
         for row in mem_rows.iter_mut() {
@@ -554,6 +565,9 @@ impl CsvEngine {
         } else {
             String::new()
         };
+        if col_idx < self.raw_headers.len() {
+            self.raw_headers.remove(col_idx);
+        }
         self.total_cols -= 1;
 
         Ok((
@@ -572,7 +586,12 @@ impl CsvEngine {
         target_col: Option<usize>,
         header_name: Option<String>,
     ) -> anyhow::Result<(usize, String, Vec<String>, usize, Vec<String>)> {
-        let insert_idx = target_col.unwrap_or(source_col + 1).min(self.total_cols);
+        if source_col >= self.total_cols {
+            anyhow::bail!("Column index out of bounds");
+        }
+        let insert_idx = target_col
+            .unwrap_or(source_col.saturating_add(1))
+            .min(self.total_cols);
         let header = header_name.unwrap_or_else(|| {
             let base = if source_col < self.headers.len() {
                 &self.headers[source_col]
@@ -595,6 +614,10 @@ impl CsvEngine {
         }
 
         self.headers.insert(insert_idx, header.clone());
+        if !self.raw_headers.is_empty() {
+            let raw_idx = insert_idx.min(self.raw_headers.len());
+            self.raw_headers.insert(raw_idx, header.clone());
+        }
         self.total_cols += 1;
 
         Ok((
@@ -648,7 +671,7 @@ impl CsvEngine {
 
         let (row_indices, total_r) = if let Some(indices) = effective_filter {
             let actual_start = start_row.min(indices.len());
-            let actual_end = (end_row + 1).min(indices.len());
+            let actual_end = end_row.saturating_add(1).min(indices.len());
             let rows: Vec<usize> = if actual_start < actual_end {
                 indices[actual_start..actual_end].to_vec()
             } else {
@@ -658,14 +681,14 @@ impl CsvEngine {
             (rows, count)
         } else {
             let actual_start = start_row.min(self.total_rows);
-            let actual_end = (end_row + 1).min(self.total_rows);
+            let actual_end = end_row.saturating_add(1).min(self.total_rows);
             let rows: Vec<usize> = (actual_start..actual_end).collect();
             let count = rows.len();
             (rows, count)
         };
 
         let col_start = start_col.min(self.total_cols);
-        let col_end = (end_col + 1).min(self.total_cols);
+        let col_end = end_col.saturating_add(1).min(self.total_cols);
         let col_count = col_end.saturating_sub(col_start);
 
         let mut tsv_output = String::new();

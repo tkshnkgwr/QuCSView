@@ -107,20 +107,13 @@ impl CsvEngine {
         } else if case_sensitive {
             current_val.replace(query, replacement)
         } else {
-            // 大文字小文字を区別しない通常文字列置換
-            let mut result = String::new();
-            let lower_val = current_val.to_lowercase();
-            let lower_query = query.to_lowercase();
-            let mut last_idx = 0;
-
-            while let Some(match_pos) = lower_val[last_idx..].find(&lower_query) {
-                let abs_pos = last_idx + match_pos;
-                result.push_str(&current_val[last_idx..abs_pos]);
-                result.push_str(replacement);
-                last_idx = abs_pos + query.len();
-            }
-            result.push_str(&current_val[last_idx..]);
-            result
+            // 大文字小文字を区別しない通常文字列置換（Unicodeバイト長変化でも安全なRegexリテラル置換）
+            let re = RegexBuilder::new(&regex::escape(query))
+                .case_insensitive(true)
+                .build()
+                .ok()?;
+            re.replace_all(&current_val, regex::NoExpand(replacement))
+                .to_string()
         };
 
         if new_val != current_val {
@@ -158,11 +151,14 @@ impl CsvEngine {
                 .case_insensitive(!case_sensitive)
                 .build()
                 .ok()
+        } else if !case_sensitive {
+            RegexBuilder::new(&regex::escape(query))
+                .case_insensitive(true)
+                .build()
+                .ok()
         } else {
             None
         };
-
-        let query_lower = query.to_lowercase();
 
         for row_idx in 0..self.total_rows {
             let cols_to_check = if let Some(target_col) = col_filter {
@@ -177,9 +173,13 @@ impl CsvEngine {
 
             for col_idx in cols_to_check {
                 let cell_val = self.get_cell_value(row_idx, col_idx);
-                let new_val = if let Some(ref re) = regex_opt {
-                    if re.is_match(&cell_val) {
-                        re.replace_all(&cell_val, replacement).to_string()
+                let new_val = if use_regex {
+                    if let Some(ref re) = regex_opt {
+                        if re.is_match(&cell_val) {
+                            re.replace_all(&cell_val, replacement).to_string()
+                        } else {
+                            cell_val.clone()
+                        }
                     } else {
                         cell_val.clone()
                     }
@@ -189,19 +189,13 @@ impl CsvEngine {
                     } else {
                         cell_val.clone()
                     }
-                } else if cell_val.to_lowercase().contains(&query_lower) {
-                    let mut result = String::new();
-                    let lower_val = cell_val.to_lowercase();
-                    let mut last_idx = 0;
-
-                    while let Some(match_pos) = lower_val[last_idx..].find(&query_lower) {
-                        let abs_pos = last_idx + match_pos;
-                        result.push_str(&cell_val[last_idx..abs_pos]);
-                        result.push_str(replacement);
-                        last_idx = abs_pos + query.len();
+                } else if let Some(ref re) = regex_opt {
+                    if re.is_match(&cell_val) {
+                        re.replace_all(&cell_val, regex::NoExpand(replacement))
+                            .to_string()
+                    } else {
+                        cell_val.clone()
                     }
-                    result.push_str(&cell_val[last_idx..]);
-                    result
                 } else {
                     cell_val.clone()
                 };

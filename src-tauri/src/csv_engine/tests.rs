@@ -437,3 +437,74 @@ fn test_set_encoding_respects_forced_encoding() {
     assert_eq!(updated.encoding, SupportedEncoding::ShiftJis);
     assert_eq!(engine.encoding, SupportedEncoding::ShiftJis);
 }
+
+#[test]
+fn test_case_insensitive_replace_unicode_boundary_safe() {
+    // 'İ' (U+0130, 2バイト) は to_lowercase() で 3バイトになるため、従来のバイト位置スライスだとパニックしていた
+    let csv_data = "Col1,Col2\nİstanbul_foo,foo\nKelvin_FOO,bar\n";
+    let temp_file = create_test_csv(csv_data);
+    let mut engine = CsvEngine::new();
+    engine.open_file(temp_file.path(), None).unwrap();
+
+    // replace_cell: $1 が正規表現展開されずリテラルとして置換されること
+    let res = engine
+        .replace_cell(0, 0, "foo", "$1_OK", false, false)
+        .unwrap();
+    assert_eq!(res.new_value, "İstanbul_$1_OK");
+
+    // replace_all: パニックせずに安全に置換されること
+    let all_res = engine.replace_all("foo", "BAR", false, false, None);
+    assert_eq!(all_res.replaced_count, 2);
+    assert_eq!(engine.get_cell_value(0, 1), "BAR");
+    assert_eq!(engine.get_cell_value(1, 0), "Kelvin_BAR");
+}
+
+#[test]
+fn test_delete_col_and_duplicate_col_out_of_bounds() {
+    let csv_data = "A,B\n1,2\n";
+    let temp_file = create_test_csv(csv_data);
+    let mut engine = CsvEngine::new();
+    engine.open_file(temp_file.path(), None).unwrap();
+
+    assert!(engine.delete_col(5).is_err());
+    assert_eq!(engine.total_cols, 2);
+
+    assert!(engine.duplicate_col(5, None, None).is_err());
+    assert_eq!(engine.total_cols, 2);
+}
+
+#[test]
+fn test_sort_handles_infinity_as_non_numeric() {
+    let csv_data = "Val\ninf\n10\n-inf\n2\n";
+    let temp_file = create_test_csv(csv_data);
+    let mut engine = CsvEngine::new();
+    engine.open_file(temp_file.path(), None).unwrap();
+
+    let sort_asc = SortConfig {
+        column: 0,
+        direction: "asc".to_string(),
+    };
+    let slice = engine.get_rows_slice(0, 10, None, Some(&sort_asc)).unwrap();
+    assert_eq!(slice.rows.len(), 4);
+}
+
+#[test]
+fn test_save_preserves_empty_headers() {
+    let csv_data = "ID,,Note\r\n1,val,ok\r\n";
+    let temp_file = create_test_csv(csv_data);
+    let path = temp_file.path().to_path_buf();
+    let mut engine = CsvEngine::new();
+    let meta = engine.open_file(&path, None).unwrap();
+    assert_eq!(meta.headers, vec!["ID", "Col 2", "Note"]);
+
+    engine
+        .save_to_file(
+            &path,
+            SupportedEncoding::Utf8,
+            SupportedLineEnding::CRLF,
+            None,
+        )
+        .unwrap();
+    let disk_content = std::fs::read_to_string(&path).unwrap();
+    assert_eq!(disk_content, "ID,,Note\r\n1,val,ok\r\n");
+}

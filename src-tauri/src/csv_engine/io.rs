@@ -7,9 +7,37 @@ use super::types::{FileMetadata, SplitResult, SupportedEncoding, SupportedLineEn
 use super::CsvEngine;
 use memmap2::Mmap;
 use std::fs::File;
-use std::io::Write;
-use std::path::Path;
+use std::io::{BufWriter, Write};
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
+
+/// エラー早期リターン時に一時ファイルを自動削除する RAII ガード
+struct TempFileGuard {
+    path: Option<PathBuf>,
+}
+
+impl TempFileGuard {
+    fn new(path: PathBuf) -> Self {
+        Self { path: Some(path) }
+    }
+
+    fn path(&self) -> &Path {
+        self.path.as_deref().unwrap_or_else(|| Path::new(""))
+    }
+
+    /// 正常にリネーム完了したら削除責務を解除
+    fn disarm(&mut self) {
+        self.path = None;
+    }
+}
+
+impl Drop for TempFileGuard {
+    fn drop(&mut self) {
+        if let Some(ref p) = self.path {
+            let _ = std::fs::remove_file(p);
+        }
+    }
+}
 
 impl CsvEngine {
     /// ファイルのエンコーディングと改行コードを高速判定
@@ -366,15 +394,21 @@ impl CsvEngine {
             let file_path = out_dir.join(&file_name);
             let mut file = File::create(&file_path)?;
 
-            if include_header && self.has_header && !self.headers.is_empty() {
-                let header_line = self
-                    .headers
-                    .iter()
-                    .map(|h| Self::escape_csv_cell(h, delim_char))
-                    .collect::<Vec<_>>()
-                    .join(&delim_char.to_string())
-                    + le;
-                file.write_all(header_line.as_bytes())?;
+            if include_header && self.has_header {
+                let header_src = if !self.raw_headers.is_empty() {
+                    &self.raw_headers
+                } else {
+                    &self.headers
+                };
+                if !header_src.is_empty() {
+                    let header_line = header_src
+                        .iter()
+                        .map(|h| Self::escape_csv_cell(h, delim_char))
+                        .collect::<Vec<_>>()
+                        .join(&delim_char.to_string())
+                        + le;
+                    file.write_all(header_line.as_bytes())?;
+                }
             }
 
             for row_idx in start..end {
@@ -398,7 +432,6 @@ impl CsvEngine {
         })
     }
 
-    /// 指定エンコーディングと改行コード、区切り文字でファイル保存
     /// 指定エンコーディングと改行コード、区切り文字でファイル保存（アトミック保存 & mmapロック解除）
     pub fn save_to_file<P: AsRef<Path>>(
         &mut self,
@@ -423,13 +456,14 @@ impl CsvEngine {
                 .duration_since(std::time::UNIX_EPOCH)?
                 .as_nanos()
         );
-        let temp_path = parent_dir.join(temp_filename);
+        let mut temp_guard = TempFileGuard::new(parent_dir.join(temp_filename));
 
         {
-            let mut file = File::create(&temp_path)?;
+            let file = File::create(temp_guard.path())?;
+            let mut writer = BufWriter::new(file);
 
             if matches!(encoding, SupportedEncoding::Utf8Bom) {
-                file.write_all(&[0xEF, 0xBB, 0xBF])?;
+                writer.write_all(&[0xEF, 0xBB, 0xBF])?;
             }
 
             let mut write_row = |cells: &[String]| -> anyhow::Result<()> {
@@ -454,22 +488,29 @@ impl CsvEngine {
 
                 match encoding {
                     SupportedEncoding::Utf8 | SupportedEncoding::Utf8Bom => {
-                        file.write_all(line.as_bytes())?;
+                        writer.write_all(line.as_bytes())?;
                     }
                     SupportedEncoding::ShiftJis => {
                         let (cow, _, _) = encoding_rs::SHIFT_JIS.encode(&line);
-                        file.write_all(&cow)?;
+                        writer.write_all(&cow)?;
                     }
                     SupportedEncoding::EucJp => {
                         let (cow, _, _) = encoding_rs::EUC_JP.encode(&line);
-                        file.write_all(&cow)?;
+                        writer.write_all(&cow)?;
                     }
                 }
                 Ok(())
             };
 
-            if self.has_header && !self.headers.is_empty() {
-                write_row(&self.headers)?;
+            if self.has_header {
+                let header_src = if !self.raw_headers.is_empty() {
+                    &self.raw_headers
+                } else {
+                    &self.headers
+                };
+                if !header_src.is_empty() {
+                    write_row(header_src)?;
+                }
             }
 
             for row_idx in 0..self.total_rows {
@@ -477,7 +518,7 @@ impl CsvEngine {
                 write_row(&row_cells)?;
             }
 
-            file.flush()?;
+            writer.flush()?;
         }
 
         // 保存先が現在開いているファイル（あるいは上書き対象）の場合、
@@ -510,16 +551,16 @@ impl CsvEngine {
                 std::thread::sleep(std::time::Duration::from_millis(10));
             }
             if !removed && path_ref.exists() {
-                if let Err(e) = std::fs::rename(&temp_path, path_ref) {
-                    let _ = std::fs::remove_file(&temp_path);
+                if let Err(e) = std::fs::rename(temp_guard.path(), path_ref) {
                     return Err(anyhow::anyhow!("Failed to overwrite file: {}", e));
                 }
             } else {
-                std::fs::rename(&temp_path, path_ref)?;
+                std::fs::rename(temp_guard.path(), path_ref)?;
             }
         } else {
-            std::fs::rename(&temp_path, path_ref)?;
+            std::fs::rename(temp_guard.path(), path_ref)?;
         }
+        temp_guard.disarm();
 
         // 保存したファイルでエンジンを再初期化（mmap再構築 & 編集マーククリア）
         self.open_file_with_encoding(path_ref, Some(out_delim as char), Some(encoding))?;

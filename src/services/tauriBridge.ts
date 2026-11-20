@@ -61,7 +61,7 @@ export const isTauriEnv = (): boolean => {
 /**
  * Tauri ネイティブ (Rust) と WebWorker (JavaScript) のハイブリッドIPCブリッジ
  *
- * デスクトップ起動時は Rust 製高速 CSV エンジン（memmap2 / rayon / regex）にネイティブ呼び出しを行い、
+ * デスクトップ起動時は Rust 製高速 CSV エンジン（memmap2 / encoding_rs / regex）にネイティブ呼び出しを行い、
  * Webブラウザでのプレビュー実行時は WebWorker に自動フォールバックして同等機能を提供します。
  */
 export class TauriBridge {
@@ -112,7 +112,7 @@ export class TauriBridge {
     const meta = await sendWorkerMessage<FileMetadata & { rawText?: string }>(
       'OPEN_FILE_BUFFER',
       {
-        buffer: buffer.slice(0),
+        buffer,
         fileName: file.name,
         fileSize: file.size,
         customDelimiter,

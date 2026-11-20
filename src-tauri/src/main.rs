@@ -262,16 +262,16 @@ fn select_save_file_dialog(default_name: Option<String>) -> Result<Option<String
         let script = r#"
             Add-Type -AssemblyName System.Windows.Forms
             $dialog = New-Object System.Windows.Forms.SaveFileDialog
-            $dialog.FileName = "__DEF_NAME__"
+            $dialog.FileName = $env:QUCSVIEW_DEF_NAME
             $dialog.Filter = "CSV Files (*.csv)|*.csv|TSV Files (*.tsv)|*.tsv|DAT Files (*.dat)|*.dat|All Files (*.*)|*.*"
             $dialog.Title = "ファイルを保存"
             if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                 $dialog.FileName
             }
-        "#
-        .replace("__DEF_NAME__", &def_name);
+        "#;
         let mut cmd = std::process::Command::new("powershell");
-        cmd.args(["-NoProfile", "-Command", &script]);
+        cmd.env("QUCSVIEW_DEF_NAME", &def_name);
+        cmd.args(["-NoProfile", "-Command", script]);
         cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
         let output = cmd.output().map_err(|e| e.to_string())?;
         let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
