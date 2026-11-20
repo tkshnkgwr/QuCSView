@@ -9,6 +9,24 @@
 
 ## [Unreleased]
 
+## [1.2.4] - 2026-11-20
+
+### 修正 (Fixed)
+- **PowerShell 保存ダイアログのインジェクション対策 (`main.rs`)**:
+  - `select_save_file_dialog` で `default_name` を環境変数経由（`$env:QUCSVIEW_DEF_NAME`）で渡すよう安全化。
+- **Unicode バイト境界パニックの解消 (`search.rs`)**:
+  - 大文字小文字無視置換（`replace_cell` / `replace_all`）で `to_lowercase()` のバイト長変化によるスライスパニックを解消し、`RegexBuilder` + `regex::escape` + `regex::NoExpand` へ刷新。
+- **DOM ID 重複バグおよび Tauri D&D リスナークリーンアップ競合の修正 (`App.tsx`, `useFileOperations.ts`)**:
+  - 隠しファイル入力要素の ID を `input-open-file-hidden` へ分離し、非同期 `onDragDropEvent` 登録完了前のアンマウント時リークを防止。
+- **空ヘッダーの原状保持・境界チェック・RAII ガード強化 (`io.rs`, `grid.rs`, `tests.rs`)**:
+  - `save_to_file` / `split_csv` で `raw_headers` を優先出力し、空ヘッダーが `"Col N"` へ変質する問題を修正。`TempFileGuard`（RAII）および `BufWriter` を導入し、`delete_col` / `duplicate_col` の範囲外チェック、`parse_numeric` の `is_finite()` 厳格化、本番 `.unwrap()` 排除を実施。
+
+### 変更 (Changed)
+- **未使用依存・設定・CI/CD 整理 (`Cargo.toml`, `package.json`, `vite.config.ts`, `index.html`, `release.yml`)**:
+  - 未使用 Rust クレート（`tauri-plugin-opener`, `encoding_rs_io`, `rayon`）および未使用 npm パッケージ（`motion`, `autoprefixer`）を削除。`@` エイリアスを `./src` に統一し、`release.yml` に Clippy 検証を追加。
+
+---
+
 ## [1.2.3] - 2026-10-27
 
 ### 変更 (Changed)

@@ -10,6 +10,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.4] - 2026-11-20
+
+### Fixed
+- **PowerShell Save Dialog Injection Mitigation (`main.rs`)**:
+  - Passed `default_name` via environment variable (`$env:QUCSVIEW_DEF_NAME`) instead of direct string interpolation in `select_save_file_dialog`.
+- **Unicode Byte-Boundary Panic in Case-Insensitive Replace (`search.rs`)**:
+  - Replaced byte-offset slicing on `to_lowercase()` with safe literal regex matching (`RegexBuilder` + `regex::escape` + `regex::NoExpand`) in `replace_cell` and `replace_all`.
+- **Duplicate DOM ID & Async Drag-Drop Listener Cleanup (`App.tsx`, `useFileOperations.ts`)**:
+  - Separated hidden file `<input>` ID to `input-open-file-hidden` and added a disposal guard for async Tauri `onDragDropEvent` cleanup.
+- **Empty Header Preservation, Bounds Checks & RAII Save Guard (`io.rs`, `grid.rs`, `tests.rs`)**:
+  - Preserved original empty headers (`raw_headers`) on save/split, added `TempFileGuard` (RAII) and `BufWriter` to `save_to_file`, added out-of-bounds checks in `delete_col`/`duplicate_col`, tightened `parse_numeric` with `is_finite()`, and removed production `.unwrap()`.
+
+### Changed
+- **Unused Dependencies, Config & CI/CD Cleanup (`Cargo.toml`, `package.json`, `vite.config.ts`, `index.html`, `release.yml`)**:
+  - Removed unused Rust crates (`tauri-plugin-opener`, `encoding_rs_io`, `rayon`) and npm packages (`motion`, `autoprefixer`); aligned `@` alias in `vite.config.ts` with `tsconfig.json` and added Clippy verification to `release.yml`.
+
+---
+
 ## [1.2.3] - 2026-10-27
 
 ### Changed

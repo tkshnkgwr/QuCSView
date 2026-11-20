@@ -101,7 +101,7 @@ graph TD
 
 ## 📊 Performance Benchmarks
 
-| Metric                        | Target       | Benchmark (v1.2.3)         | Status      |
+| Metric                        | Target       | Benchmark (v1.2.4)         | Status      |
 | :---------------------------- | :----------- | :------------------------- | :---------- |
 | **Cold Startup Time**         | `< 300 ms`   | **~180 ms**                | ✅ PASS     |
 | **500MB CSV Load Time**       | `< 1.0 s`    | **~380 ms**                | ✅ PASS     |

@@ -8,7 +8,7 @@
 
 Environment: Windows 11 Pro 64-bit, Intel Core i5-12400 (6 Cores), 16GB RAM, NVMe SSD
 
-| Metric                        | Target       | Benchmark (v1.2.3) | Status  |
+| Metric                        | Target       | Benchmark (v1.2.4) | Status  |
 | :---------------------------- | :----------- | :----------------- | :------ |
 | **Cold Startup Time**         | `< 300 ms`   | **185 ms**         | ✅ PASS |
 | **100K Rows CSV (15MB) Open** | `< 200 ms`   | **45 ms**          | ✅ PASS |
